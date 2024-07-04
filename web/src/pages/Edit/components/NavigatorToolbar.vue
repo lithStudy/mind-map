@@ -16,6 +16,15 @@
       </el-select>
     </div>
     <div class="item">
+      <el-tooltip
+        effect="dark"
+        :content="$t('navigatorToolbar.backToRoot')"
+        placement="top"
+      >
+        <div class="btn iconfont icondingwei" @click="backToRoot"></div>
+      </el-tooltip>
+    </div>
+    <div class="item">
       <div class="btn iconfont iconsousuo" @click="showSearch"></div>
     </div>
     <div class="item">
@@ -72,6 +81,18 @@
       ></div>
     </div>
     <div class="item">
+      <el-tooltip
+        effect="dark"
+        :content="$t('navigatorToolbar.changeSourceCodeEdit')"
+        placement="top"
+      >
+        <div class="btn iconfont iconyuanma" @click="openSourceCodeEdit"></div>
+      </el-tooltip>
+    </div>
+    <div class="item">
+      <Demonstrate :isDark="isDark" :mindMap="mindMap"></Demonstrate>
+    </div>
+    <div class="item">
       <el-dropdown @command="handleCommand">
         <div class="btn iconfont iconbangzhu"></div>
         <el-dropdown-menu slot="dropdown">
@@ -80,6 +101,7 @@
           <el-dropdown-item command="devDoc">开发文档</el-dropdown-item>
           <el-dropdown-item command="site">官方网站</el-dropdown-item>
           <el-dropdown-item command="issue">意见反馈</el-dropdown-item>
+          <el-dropdown-item disabled>当前：v{{ version }}</el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
     </div>
@@ -94,6 +116,8 @@ import { langList } from '@/config'
 import i18n from '@/i18n'
 import { storeLang, getLang } from '@/api'
 import { mapState, mapMutations } from 'vuex'
+import pkg from 'simple-mind-map/package.json'
+import Demonstrate from './Demonstrate.vue'
 
 /**
  * @Author: 王林
@@ -105,7 +129,8 @@ export default {
   components: {
     Scale,
     Fullscreen,
-    MouseAction
+    MouseAction,
+    Demonstrate
   },
   props: {
     mindMap: {
@@ -114,23 +139,26 @@ export default {
   },
   data() {
     return {
+      version: pkg.version,
       langList,
       lang: '',
-      isReadonly: false,
       openMiniMap: false
     }
   },
   computed: {
-    ...mapState(['isDark'])
+    ...mapState({
+      isReadonly: state => state.isReadonly,
+      isDark: state => state.localConfig.isDark
+    })
   },
   created() {
     this.lang = getLang()
   },
   methods: {
-    ...mapMutations(['setIsDark']),
+    ...mapMutations(['setLocalConfig', 'setIsReadonly', 'setIsSourceCodeEdit']),
 
     readonlyChange() {
-      this.isReadonly = !this.isReadonly
+      this.setIsReadonly(!this.isReadonly)
       this.mindMap.setMode(this.isReadonly ? 'readonly' : 'edit')
     },
 
@@ -142,6 +170,7 @@ export default {
     onLangChange(lang) {
       i18n.locale = lang
       storeLang(lang)
+      this.$bus.$emit('lang_change')
     },
 
     showSearch() {
@@ -149,7 +178,9 @@ export default {
     },
 
     toggleDark() {
-      this.setIsDark(!this.isDark)
+      this.setLocalConfig({
+        isDark: !this.isDark
+      })
     },
 
     handleCommand(command) {
@@ -177,6 +208,14 @@ export default {
       a.href = url
       a.target = '_blank'
       a.click()
+    },
+
+    backToRoot() {
+      this.mindMap.renderer.setRootNodeCenter()
+    },
+
+    openSourceCodeEdit() {
+      this.setIsSourceCodeEdit(true)
     }
   }
 }
@@ -229,10 +268,12 @@ export default {
   }
 }
 
-@media screen and (max-width: 502px) {
+@media screen and (max-width: 590px) {
   .navigatorContainer {
     left: 20px;
     overflow-x: auto;
+    overflow-y: hidden;
+    height: 60px;
   }
 }
 </style>

@@ -1,8 +1,18 @@
 <template>
-  <div class="editContainer">
-    <div class="mindMapContainer" ref="mindMapContainer"></div>
+  <div
+    class="editContainer"
+    @dragenter.stop.prevent="onDragenter"
+    @dragleave.stop.prevent
+    @dragover.stop.prevent
+    @drop.stop.prevent
+  >
+    <div
+      class="mindMapContainer"
+      id="mindMapContainer"
+      ref="mindMapContainer"
+    ></div>
     <Count :mindMap="mindMap" v-if="!isZenMode"></Count>
-    <Navigator :mindMap="mindMap"></Navigator>
+    <Navigator v-if="mindMap" :mindMap="mindMap"></Navigator>
     <NavigatorToolbar :mindMap="mindMap" v-if="!isZenMode"></NavigatorToolbar>
     <OutlineSidebar :mindMap="mindMap"></OutlineSidebar>
     <Style v-if="!isZenMode"></Style>
@@ -16,6 +26,7 @@
       v-if="mindMap"
       :mindMap="mindMap"
     ></NodeNoteContentShow>
+    <NodeAttachment v-if="mindMap" :mindMap="mindMap"></NodeAttachment>
     <NodeImgPreview v-if="mindMap" :mindMap="mindMap"></NodeImgPreview>
     <SidebarTrigger v-if="!isZenMode"></SidebarTrigger>
     <Search v-if="mindMap" :mindMap="mindMap"></Search>
@@ -23,6 +34,18 @@
     <NodeIconToolbar v-if="mindMap" :mindMap="mindMap"></NodeIconToolbar>
     <OutlineEdit v-if="mindMap" :mindMap="mindMap"></OutlineEdit>
     <Scrollbar v-if="isShowScrollbar && mindMap" :mindMap="mindMap"></Scrollbar>
+    <FormulaSidebar v-if="mindMap" :mindMap="mindMap"></FormulaSidebar>
+    <SourceCodeEdit v-if="mindMap" :mindMap="mindMap"></SourceCodeEdit>
+    <NodeOuterFrame v-if="mindMap" :mindMap="mindMap"></NodeOuterFrame>
+    <div
+      class="dragMask"
+      v-if="showDragMask"
+      @dragleave.stop.prevent="onDragleave"
+      @dragover.stop.prevent
+      @drop.stop.prevent="onDrop"
+    >
+      <div class="dragTip">{{ $t('edit.dragTip') }}</div>
+    </div>
   </div>
 </template>
 
@@ -43,6 +66,16 @@ import NodeImgAdjust from 'simple-mind-map/src/plugins/NodeImgAdjust.js'
 import SearchPlugin from 'simple-mind-map/src/plugins/Search.js'
 import Painter from 'simple-mind-map/src/plugins/Painter.js'
 import ScrollbarPlugin from 'simple-mind-map/src/plugins/Scrollbar.js'
+import Formula from 'simple-mind-map/src/plugins/Formula.js'
+import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js'
+import Demonstrate from 'simple-mind-map/src/plugins/Demonstrate.js'
+import OuterFrame from 'simple-mind-map/src/plugins/OuterFrame.js'
+// 协同编辑插件
+// import Cooperate from 'simple-mind-map/src/plugins/Cooperate.js'
+// 手绘风格插件，该插件为付费插件，详情请查看开发文档
+// import HandDrawnLikeStyle from 'simple-mind-map-plugin-handdrawnlikestyle'
+// 标记插件，该插件为付费插件，详情请查看开发文档
+// import Notation from 'simple-mind-map-plugin-notation'
 import OutlineSidebar from './OutlineSidebar'
 import Style from './Style'
 import BaseStyle from './BaseStyle'
@@ -75,6 +108,10 @@ import { showLoading, hideLoading } from '@/utils/loading'
 import handleClipboardText from '@/utils/handleClipboardText'
 import Scrollbar from './Scrollbar.vue'
 import exampleData from 'simple-mind-map/example/exampleData'
+import FormulaSidebar from './FormulaSidebar.vue'
+import SourceCodeEdit from './SourceCodeEdit.vue'
+import NodeAttachment from './NodeAttachment.vue'
+import NodeOuterFrame from './NodeOuterFrame.vue'
 
 // 注册插件
 MindMap.usePlugin(MiniMap)
@@ -90,7 +127,11 @@ MindMap.usePlugin(MiniMap)
   .usePlugin(TouchEvent)
   .usePlugin(SearchPlugin)
   .usePlugin(Painter)
-  .usePlugin(ScrollbarPlugin)
+  .usePlugin(Formula)
+  .usePlugin(RainbowLines)
+  .usePlugin(Demonstrate)
+  .usePlugin(OuterFrame)
+// .usePlugin(Cooperate) // 协同插件
 
 // 注册自定义主题
 customThemeList.forEach(item => {
@@ -123,7 +164,11 @@ export default {
     NodeIconSidebar,
     NodeIconToolbar,
     OutlineEdit,
-    Scrollbar
+    Scrollbar,
+    FormulaSidebar,
+    SourceCodeEdit,
+    NodeAttachment,
+    NodeOuterFrame
   },
   data() {
     return {
@@ -131,16 +176,20 @@ export default {
       mindMap: null,
       mindMapData: null,
       prevImg: '',
-      storeConfigTimer: null
+      storeConfigTimer: null,
+      showDragMask: false
     }
   },
   computed: {
     ...mapState({
       isZenMode: state => state.localConfig.isZenMode,
       openNodeRichText: state => state.localConfig.openNodeRichText,
+      isShowScrollbar: state => state.localConfig.isShowScrollbar,
       useLeftKeySelectionRightKeyDrag: state =>
         state.localConfig.useLeftKeySelectionRightKeyDrag,
-      isShowScrollbar: state => state.localConfig.isShowScrollbar
+      isUseHandDrawnLikeStyle: state =>
+        state.localConfig.isUseHandDrawnLikeStyle,
+      extraTextOnExport: state => state.extraTextOnExport
     })
   },
   watch: {
@@ -149,6 +198,20 @@ export default {
         this.addRichTextPlugin()
       } else {
         this.removeRichTextPlugin()
+      }
+    },
+    isShowScrollbar() {
+      if (this.isShowScrollbar) {
+        this.addScrollbarPlugin()
+      } else {
+        this.removeScrollbarPlugin()
+      }
+    },
+    isUseHandDrawnLikeStyle() {
+      if (this.isUseHandDrawnLikeStyle) {
+        this.addHandDrawnLikeStylePlugin()
+      } else {
+        this.removeHandDrawnLikeStylePlugin()
       }
     }
   },
@@ -181,6 +244,7 @@ export default {
     this.$bus.$off('node_tree_render_end', this.handleHideLoading)
     this.$bus.$off('showLoading', this.handleShowLoading)
     window.removeEventListener('resize', this.handleResize)
+    this.mindMap.destroy()
   },
   methods: {
     handleStartTextEdit() {
@@ -267,10 +331,10 @@ export default {
       // 如果url中存在要打开的文件，那么思维导图数据、主题、布局都使用默认的
       if (hasFileURL) {
         root = {
-          "data": {
-              "text": "根节点"
+          data: {
+            text: this.$t('edit.root')
           },
-          "children": []
+          children: []
         }
         layout = exampleData.layout
         theme = exampleData.theme
@@ -279,6 +343,7 @@ export default {
       this.mindMap = new MindMap({
         el: this.$refs.mindMapContainer,
         data: root,
+        fit: false,
         layout: layout,
         theme: theme.template,
         themeConfig: theme.config,
@@ -286,19 +351,130 @@ export default {
         nodeTextEditZIndex: 1000,
         nodeNoteTooltipZIndex: 1000,
         customNoteContentShow: {
-          show: (content, left, top) => {
-            this.$bus.$emit('showNoteContent', content, left, top)
+          show: (content, left, top, node) => {
+            this.$bus.$emit('showNoteContent', content, left, top, node)
           },
           hide: () => {
             // this.$bus.$emit('hideNoteContent')
           }
         },
         ...(config || {}),
-        iconList: icon,
+        iconList: [...icon],
         useLeftKeySelectionRightKeyDrag: this.useLeftKeySelectionRightKeyDrag,
         customInnerElsAppendTo: null,
         enableAutoEnterTextEditWhenKeydown: true,
         customHandleClipboardText: handleClipboardText,
+        defaultNodeImage: require('../../../assets/img/图片加载失败.svg'),
+        initRootNodePosition: ['center', 'center'],
+        handleIsSplitByWrapOnPasteCreateNewNode: () => {
+          return this.$confirm(
+            this.$t('edit.splitByWrap'),
+            this.$t('edit.tip'),
+            {
+              confirmButtonText: this.$t('edit.yes'),
+              cancelButtonText: this.$t('edit.no'),
+              type: 'warning'
+            }
+          )
+        },
+        errorHandler: (code, err) => {
+          console.error(err)
+          switch (code) {
+            case 'export_error':
+              this.$message.error(this.$t('edit.exportError'))
+              break
+            default:
+              break
+          }
+        },
+        addContentToFooter: () => {
+          const text = this.extraTextOnExport.trim()
+          if (!text) return null
+          const el = document.createElement('div')
+          el.className = 'footer'
+          el.innerHTML = text
+          const cssText = `
+            .footer {
+              width: 100%;
+              height: 30px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              font-size: 12px;
+              color: #979797;
+            }
+          `
+          return {
+            el,
+            cssText,
+            height: 30
+          }
+        }
+        // createNodePrefixContent: (node) => {
+        //   const el = document.createElement('div')
+        //   el.style.width = '50px'
+        //   el.style.height = '50px'
+        //   el.style.background = 'red'
+        //   return {
+        //     el,
+        //     width: 50,
+        //     height: 50
+        //   }
+        // },
+        // createNodePostfixContent: node => {
+        //   const domparser = new DOMParser()
+        //   const doc = domparser.parseFromString(
+        //     '<b style="background-color: rgb(214, 239, 214);">白日依山尽</b>',
+        //     'text/html'
+        //   )
+        //   const el = doc.querySelector('b')
+        //   return {
+        //     el,
+        //     width: 50,
+        //     height: 50
+        //   }
+        // },
+        // addContentToHeader: () => {
+        //   const el = document.createElement('div')
+        //   el.className = 'footer'
+        //   el.innerHTML = '理想青年实验室'
+        //   const cssText = `
+        //     .header {
+        //       width: 100%;
+        //       height: 50px;
+        //       background: #f5f5f5;
+        //       display: flex;
+        //       justify-content: center;
+        //       align-items: center
+        //     }
+        //   `
+        //   return {
+        //     el,
+        //     cssText,
+        //     height: 50
+        //   }
+        // },
+        // beforeShortcutRun: (key, activeNodeList) => {
+        //   console.log(key, activeNodeList)
+        //   // 阻止删除快捷键行为
+        //   if (key === 'Backspace') {
+        //     return true
+        //   }
+        // }
+        // handleNodePasteImg: img => {
+        //   console.log(img)
+        //   return new Promise(resolve => {
+        //     setTimeout(() => {
+        //       resolve({
+        //         url: require('../../../assets/img/themes/autumn.jpg'),
+        //         size: {
+        //           width: 100,
+        //           height: 100
+        //         }
+        //       })
+        //     }, 200)
+        //   })
+        // }
         // isUseCustomNodeContent: true,
         // 示例1：组件里用到了router、store、i18n等实例化vue组件时需要用到的东西
         // customCreateNodeContent: (node) => {
@@ -325,7 +501,7 @@ export default {
         //   return comp.$el
         // },
         // 示例3：普通元素
-        // customCreateNodeContent: (node) => {
+        // customCreateNodeContent: node => {
         //   let el = document.createElement('div')
         //   el.style.cssText = `
         //     width: 203px;
@@ -338,11 +514,23 @@ export default {
         //     justify-content: center;
         //     align-items: center;
         //   `
-        //   el.innerHTML = node.nodeData.data.text
+        //   el.innerHTML = `
+        //     ${node.nodeData.data.text}
+        //     <img crossOrigin="anonymous" src="/img/cactus.jpg" />
+        //   `
         //   return el
-        // },
+        // }
       })
       if (this.openNodeRichText) this.addRichTextPlugin()
+      if (this.isShowScrollbar) this.addScrollbarPlugin()
+      if (this.isUseHandDrawnLikeStyle) this.addHandDrawnLikeStylePlugin()
+      if (typeof HandDrawnLikeStyle !== 'undefined') {
+        this.$store.commit('setSupportHandDrawnLikeStyle', true)
+      }
+      if (typeof Notation !== 'undefined') {
+        this.mindMap.addPlugin(Notation)
+        this.$store.commit('setSupportMark', true)
+      }
       this.mindMap.keyCommand.addShortcut('Control+s', () => {
         this.manualSave()
       })
@@ -365,27 +553,20 @@ export default {
         'generalization_node_contextmenu',
         'painter_start',
         'painter_end',
-        'scrollbar_change'
+        'scrollbar_change',
+        'scale',
+        'translate',
+        'node_attachmentClick',
+        'node_attachmentContextmenu',
+        'demonstrate_jump',
+        'exit_demonstrate'
       ].forEach(event => {
         this.mindMap.on(event, (...args) => {
           this.$bus.$emit(event, ...args)
         })
       })
       this.bindSaveEvent()
-      // setTimeout(() => {
-      // 动态给指定节点添加子节点
-      // this.mindMap.execCommand('INSERT_CHILD_NODE', false, this.mindMap.renderer.root, {
-      //   text: '自定义内容'
-      // })
-
-      // 动态给指定节点添加同级节点
-      // this.mindMap.execCommand('INSERT_NODE', false, this.mindMap.renderer.root, {
-      //   text: '自定义内容'
-      // })
-
-      // 动态删除指定节点
-      // this.mindMap.execCommand('REMOVE_NODE', this.mindMap.renderer.root.children[0])
-      // }, 5000);
+      this.testDynamicCreateNodes()
       // 如果应用被接管，那么抛出事件传递思维导图实例
       if (window.takeOverApp) {
         this.$bus.$emit('app_inited', this.mindMap)
@@ -394,6 +575,24 @@ export default {
       if (hasFileURL) {
         this.$bus.$emit('handle_file_url')
       }
+      // 协同测试
+      this.cooperateTest()
+      // 销毁
+      // setTimeout(() => {
+      //   console.log('销毁')
+      //   this.mindMap.destroy()
+      // }, 10000)
+      // 测试
+      // setTimeout(() => {
+      //   console.log(this.mindMap.renderer.root.getRect())
+      //   console.log(this.mindMap.renderer.root.getRectInSvg())
+      // }, 5000);
+      // setTimeout(() => {
+      //   this.mindMap.renderer.renderTree.data.fillColor = 'red'
+      //   this.mindMap.render()
+      //   this.mindMap.reRender()
+      //   this.mindMap.render()
+      // }, 5000)
     },
 
     // url中是否存在要打开的文件
@@ -444,9 +643,12 @@ export default {
      */
     async export(...args) {
       try {
-        this.mindMap.export(...args)
+        showLoading()
+        await this.mindMap.export(...args)
+        hideLoading()
       } catch (error) {
         console.log(error)
+        hideLoading()
       }
     },
 
@@ -479,6 +681,180 @@ export default {
     // 移除节点富文本编辑插件
     removeRichTextPlugin() {
       this.mindMap.removePlugin(RichText)
+    },
+
+    // 加载滚动条插件
+    addScrollbarPlugin() {
+      if (!this.mindMap) return
+      this.mindMap.addPlugin(ScrollbarPlugin)
+    },
+
+    // 移除滚动条插件
+    removeScrollbarPlugin() {
+      this.mindMap.removePlugin(ScrollbarPlugin)
+    },
+
+    // 加载手绘风格插件
+    addHandDrawnLikeStylePlugin() {
+      try {
+        if (!this.mindMap) return
+        this.mindMap.addPlugin(HandDrawnLikeStyle)
+        this.mindMap.reRender()
+      } catch (error) {
+        console.log('手绘风格插件不存在')
+      }
+    },
+
+    // 移除手绘风格插件
+    removeHandDrawnLikeStylePlugin() {
+      try {
+        this.mindMap.removePlugin(HandDrawnLikeStyle)
+        this.mindMap.reRender()
+      } catch (error) {
+        console.log('手绘风格插件不存在')
+      }
+    },
+
+    // 测试动态插入节点
+    testDynamicCreateNodes() {
+      // return
+      setTimeout(() => {
+        // 动态给指定节点添加子节点
+        // this.mindMap.execCommand(
+        //   'INSERT_CHILD_NODE',
+        //   false,
+        //   null,
+        //   {
+        //     text: '自定义内容'
+        //   },
+        //   [
+        //     {
+        //       data: {
+        //         text: '自定义子节点'
+        //       }
+        //     }
+        //   ]
+        // )
+        // 动态给指定节点添加同级节点
+        // this.mindMap.execCommand(
+        //   'INSERT_NODE',
+        //   false,
+        //   null,
+        //   {
+        //     text: '自定义内容'
+        //   },
+        //   [
+        //     {
+        //       data: {
+        //         text: '自定义同级节点'
+        //       },
+        //       children: [
+        //         {
+        //           data: {
+        //             text: '自定义同级节点2'
+        //           },
+        //           children: []
+        //         }
+        //       ]
+        //     }
+        //   ]
+        // )
+        // 动态插入多个子节点
+        // this.mindMap.execCommand('INSERT_MULTI_CHILD_NODE', null, [
+        //   {
+        //     data: {
+        //       text: '自定义节点1'
+        //     },
+        //     children: [
+        //       {
+        //         data: {
+        //           text: '自定义节点1-1'
+        //         },
+        //         children: []
+        //       }
+        //     ]
+        //   },
+        //   {
+        //     data: {
+        //       text: '自定义节点2'
+        //     },
+        //     children: [
+        //       {
+        //         data: {
+        //           text: '自定义节点2-1'
+        //         },
+        //         children: []
+        //       }
+        //     ]
+        //   }
+        // ])
+        // 动态插入多个同级节点
+        // this.mindMap.execCommand('INSERT_MULTI_NODE', null, [
+        //   {
+        //     data: {
+        //       text: '自定义节点1'
+        //     },
+        //     children: [
+        //       {
+        //         data: {
+        //           text: '自定义节点1-1'
+        //         },
+        //         children: []
+        //       }
+        //     ]
+        //   },
+        //   {
+        //     data: {
+        //       text: '自定义节点2'
+        //     },
+        //     children: [
+        //       {
+        //         data: {
+        //           text: '自定义节点2-1'
+        //         },
+        //         children: []
+        //       }
+        //     ]
+        //   }
+        // ])
+        // 动态删除指定节点
+        // this.mindMap.execCommand('REMOVE_NODE', this.mindMap.renderer.root.children[0])
+      }, 5000)
+    },
+
+    // 协同测试
+    cooperateTest() {
+      if (this.mindMap.cooperate && this.$route.query.userName) {
+        this.mindMap.cooperate.setProvider(null, {
+          roomName: 'demo-room',
+          signalingList: ['ws://localhost:4444']
+        })
+        this.mindMap.cooperate.setUserInfo({
+          id: Math.random(),
+          name: this.$route.query.userName,
+          color: ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399'][
+            Math.floor(Math.random() * 5)
+          ],
+          avatar:
+            Math.random() > 0.5
+              ? 'https://img0.baidu.com/it/u=4270674549,2416627993&fm=253&app=138&size=w931&n=0&f=JPEG&fmt=auto?sec=1696006800&t=4d32871d14a7224a4591d0c3c7a97311'
+              : ''
+        })
+      }
+    },
+
+    // 拖拽文件到页面导入
+    onDragenter() {
+      this.showDragMask = true
+    },
+    onDragleave() {
+      this.showDragMask = false
+    },
+    onDrop(e) {
+      this.showDragMask = false
+      const dt = e.dataTransfer
+      const file = dt.files && dt.files[0]
+      this.$bus.$emit('importFile', file)
     }
   }
 }
@@ -491,6 +867,24 @@ export default {
   right: 0;
   top: 0;
   bottom: 0;
+
+  .dragMask {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3999;
+
+    .dragTip {
+      pointer-events: none;
+      font-weight: bold;
+    }
+  }
 
   .mindMapContainer {
     position: absolute;

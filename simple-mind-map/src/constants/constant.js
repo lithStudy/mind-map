@@ -1,27 +1,3 @@
-//  标签颜色列表
-export const tagColorList = [
-  {
-    color: 'rgb(77, 65, 0)',
-    background: 'rgb(255, 244, 179)'
-  },
-  {
-    color: 'rgb(0, 50, 77)',
-    background: 'rgb(179, 229, 255)'
-  },
-  {
-    color: 'rgb(77, 0, 73)',
-    background: 'rgb(255, 179, 251)'
-  },
-  {
-    color: 'rgb(57, 77, 0)',
-    background: 'rgb(236, 255, 179)'
-  },
-  {
-    color: 'rgb(0, 77, 47)',
-    background: 'rgb(179, 255, 226)'
-  }
-]
-
 //  主题列表
 export const themeList = [
   {
@@ -198,6 +174,7 @@ export const CONSTANTS = {
   },
   LAYOUT: {
     LOGICAL_STRUCTURE: 'logicalStructure',
+    LOGICAL_STRUCTURE_LEFT: 'logicalStructureLeft',
     MIND_MAP: 'mindMap',
     ORGANIZATION_STRUCTURE: 'organizationStructure',
     CATALOG_ORGANIZATION: 'catalogOrganization',
@@ -249,6 +226,15 @@ export const CONSTANTS = {
   PASTE_TYPE: {
     CLIP_BOARD: 'clipBoard',
     CANVAS: 'canvas'
+  },
+  SCROLL_BAR_DIR: {
+    VERTICAL: 'vertical',
+    HORIZONTAL: 'horizontal'
+  },
+  CREATE_NEW_NODE_BEHAVIOR: {
+    DEFAULT: 'default',
+    NOT_ACTIVE: 'notActive',
+    ACTIVE_ONLY: 'activeOnly'
   }
 }
 
@@ -257,46 +243,51 @@ export const initRootNodePositionMap = {
   [CONSTANTS.INIT_ROOT_NODE_POSITION.TOP]: 0,
   [CONSTANTS.INIT_ROOT_NODE_POSITION.RIGHT]: 1,
   [CONSTANTS.INIT_ROOT_NODE_POSITION.BOTTOM]: 1,
-  [CONSTANTS.INIT_ROOT_NODE_POSITION.CENTER]: 0.5,
+  [CONSTANTS.INIT_ROOT_NODE_POSITION.CENTER]: 0.5
 }
 
 //  布局结构列表
 export const layoutList = [
   {
     name: '逻辑结构图',
-    value: CONSTANTS.LAYOUT.LOGICAL_STRUCTURE,
+    value: CONSTANTS.LAYOUT.LOGICAL_STRUCTURE
+  },
+  {
+    name: '向左逻辑结构图',
+    value: CONSTANTS.LAYOUT.LOGICAL_STRUCTURE_LEFT
   },
   {
     name: '思维导图',
-    value: CONSTANTS.LAYOUT.MIND_MAP,
+    value: CONSTANTS.LAYOUT.MIND_MAP
   },
   {
     name: '组织结构图',
-    value: CONSTANTS.LAYOUT.ORGANIZATION_STRUCTURE,
+    value: CONSTANTS.LAYOUT.ORGANIZATION_STRUCTURE
   },
   {
     name: '目录组织图',
-    value: CONSTANTS.LAYOUT.CATALOG_ORGANIZATION,
+    value: CONSTANTS.LAYOUT.CATALOG_ORGANIZATION
   },
   {
     name: '时间轴',
-    value: CONSTANTS.LAYOUT.TIMELINE,
+    value: CONSTANTS.LAYOUT.TIMELINE
   },
   {
     name: '时间轴2',
-    value: CONSTANTS.LAYOUT.TIMELINE2,
+    value: CONSTANTS.LAYOUT.TIMELINE2
   },
   {
     name: '竖向时间轴',
-    value: CONSTANTS.LAYOUT.VERTICAL_TIMELINE,
+    value: CONSTANTS.LAYOUT.VERTICAL_TIMELINE
   },
   {
     name: '鱼骨图',
-    value: CONSTANTS.LAYOUT.FISHBONE,
+    value: CONSTANTS.LAYOUT.FISHBONE
   }
 ]
 export const layoutValueList = [
   CONSTANTS.LAYOUT.LOGICAL_STRUCTURE,
+  CONSTANTS.LAYOUT.LOGICAL_STRUCTURE_LEFT,
   CONSTANTS.LAYOUT.MIND_MAP,
   CONSTANTS.LAYOUT.CATALOG_ORGANIZATION,
   CONSTANTS.LAYOUT.ORGANIZATION_STRUCTURE,
@@ -327,14 +318,12 @@ export const nodeDataNoStylePropList = [
   'associativeLineTargets',
   'associativeLineTargetControlOffsets',
   'associativeLinePoint',
-  'associativeLineText'
+  'associativeLineText',
+  'attachmentUrl',
+  'attachmentName',
+  'notation',
+  'outerFrame'
 ]
-
-// 数据缓存
-export const commonCaches = {
-  measureCustomNodeContentSizeEl: null,
-  measureRichtextNodeTextSizeEl: null
-}
 
 // 错误类型
 export const ERROR_TYPES = {
@@ -343,13 +332,9 @@ export const ERROR_TYPES = {
   CUSTOM_HANDLE_CLIPBOARD_TEXT_ERROR: 'custom_handle_clipboard_text_error',
   LOAD_CLIPBOARD_IMAGE_ERROR: 'load_clipboard_image_error',
   BEFORE_TEXT_EDIT_ERROR: 'before_text_edit_error',
-  EXPORT_ERROR: 'export_error'
-}
-
-// a4纸的宽高
-export const a4Size = {
-  width: 592.28,
-  height: 841.89
+  EXPORT_ERROR: 'export_error',
+  EXPORT_LOAD_IMAGE_ERROR: 'export_load_image_error',
+  DATA_CHANGE_DETAIL_EVENT_ERROR: 'data_change_detail_event_error'
 }
 
 // css
@@ -361,13 +346,24 @@ export const cssContent = `
     stroke-width: 1;
   }
 
-  .smm-node:hover .smm-hover-node{
+  .smm-node:not(.smm-node-dragging):hover .smm-hover-node{
     display: block;
   }
 
-  .smm-node.active .smm-hover-node{
+  .smm-node.active .smm-hover-node, .smm-node-highlight .smm-hover-node{
     display: block;
     opacity: 1;
     stroke-width: 2;
   }
 `
+
+// html自闭合标签列表
+export const selfCloseTagList = [
+  'img',
+  'br',
+  'hr',
+  'input',
+  'link',
+  'meta',
+  'area'
+]

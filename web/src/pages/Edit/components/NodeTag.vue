@@ -3,7 +3,8 @@
     class="nodeTagDialog"
     :title="$t('nodeTag.title')"
     :visible.sync="dialogVisible"
-    width="500"
+    :width="isMobile ? '90%' : '50%'"
+    :top="isMobile ? '20px' : '15vh'"
   >
     <el-input
       v-model="tag"
@@ -20,8 +21,7 @@
         v-for="(item, index) in tagArr"
         :key="index"
         :style="{
-          backgroundColor: tagColorList[index].background,
-          color: tagColorList[index].color
+          backgroundColor: generateColorByContent(item)
         }"
       >
         {{ item }}
@@ -40,7 +40,10 @@
 </template>
 
 <script>
-import { tagColorList } from 'simple-mind-map/src/constants/constant'
+import {
+  generateColorByContent,
+  isMobile
+} from 'simple-mind-map/src/utils/index'
 
 /**
  * @Author: 王林
@@ -52,11 +55,18 @@ export default {
   data() {
     return {
       dialogVisible: false,
-      tagColorList,
       tagArr: [],
       tag: '',
       activeNodes: [],
-      max: 5
+      max: 5,
+      isMobile: isMobile()
+    }
+  },
+  watch: {
+    dialogVisible(val, oldVal) {
+      if (!val && oldVal) {
+        this.$bus.$emit('endTextEdit')
+      }
     }
   },
   created() {
@@ -68,6 +78,8 @@ export default {
     this.$bus.$off('showNodeTag', this.handleShowNodeTag)
   },
   methods: {
+    generateColorByContent,
+
     handleNodeActive(...args) {
       this.activeNodes = [...args[1]]
       if (this.activeNodes.length > 0) {
@@ -110,7 +122,6 @@ export default {
      */
     cancel() {
       this.dialogVisible = false
-      this.$bus.$emit('endTextEdit')
     },
 
     /**
@@ -140,6 +151,7 @@ export default {
       padding: 3px 5px;
       margin-right: 5px;
       margin-bottom: 5px;
+      color: #fff;
 
       .delBtn {
         position: absolute;

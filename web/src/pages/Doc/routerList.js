@@ -31,6 +31,11 @@ export default [
       { path: 'course22', title: '如何实现搜索、替换' },
       { path: 'course23', title: '如何渲染滚动条' },
       { path: 'course24', title: '如何开发一个插件' },
+      { path: 'course25', title: '关于概要' },
+      { path: 'course26', title: '如何实现AI生成节点内容' },
+      { path: 'course27', title: '快捷键操作如何传递自定义参数' },
+      { path: 'course28', title: '如何动态修改自定义元素的大小' },
+      { path: 'course29', title: '局域网docker部署解决HTTPS问题的一种方法' },
       { path: 'doExport', title: 'Export 插件' },
       { path: 'drag', title: 'Drag插件' },
       { path: 'introduction', title: '简介' },
@@ -40,10 +45,11 @@ export default [
       { path: 'miniMap', title: 'MiniMap插件' },
       { path: 'node', title: 'Node实例' },
       { path: 'render', title: 'Render实例' },
+      { path: 'textEdit', title: 'TextEdit实例' },
       { path: 'richText', title: 'RichText插件' },
       { path: 'select', title: 'Select 插件 ' },
       { path: 'start', title: '开始' },
-      { path: 'translate', title: '参与翻译' },
+      { path: 'translate', title: '贡献' },
       { path: 'utils', title: '内置工具方法' },
       { path: 'view', title: 'View实例' },
       { path: 'watermark', title: 'Watermark插件' },
@@ -54,11 +60,20 @@ export default [
       { path: 'nodeImgAdjust', title: 'NodeImgAdjust插件' },
       { path: 'search', title: 'Search插件' },
       { path: 'painter', title: 'Painter插件' },
-      { path: 'painter', title: 'Painter插件' },
       { path: 'scrollbar', title: 'Scrollbar插件' },
+      { path: 'formula', title: 'Formula插件' },
+      { path: 'cooperate', title: 'Cooperate插件' },
+      { path: 'rainbowLines', title: 'RainbowLines插件' },
+      { path: 'demonstrate', title: 'Demonstrate插件' },
+      { path: 'outerFrame', title: 'OuterFrame插件' },
+      { path: 'handDrawnLikeStyle', title: 'HandDrawnLikeStyle收费插件' },
+      { path: 'notation', title: 'Notation收费插件' },
       { path: 'help1', title: '概要/关联线' },
       { path: 'help2', title: '客户端' },
-      { path: 'help3', title: '打开预览在线文件' }
+      { path: 'help3', title: '打开预览在线文件' },
+      { path: 'help4', title: '复制粘贴' },
+      { path: 'help5', title: '导出' },
+      { path: 'help6', title: '如何编辑数学公式' }
     ]
   },
   {
@@ -78,10 +93,11 @@ export default [
       { path: 'miniMap', title: 'MiniMap plugin' },
       { path: 'node', title: 'Node instance' },
       { path: 'render', title: 'Render instance' },
+      { path: 'textEdit', title: 'TextEdit instance' },
       { path: 'richText', title: 'RichText plugin' },
       { path: 'select', title: 'Select plugin' },
       { path: 'start', title: 'Start' },
-      { path: 'translate', title: 'Participate in translation' },
+      { path: 'translate', title: 'Contribute' },
       { path: 'utils', title: 'Utility Methods' },
       { path: 'view', title: 'View instance' },
       { path: 'watermark', title: 'Watermark plugin' },
@@ -91,7 +107,18 @@ export default [
       { path: 'nodeImgAdjust', title: 'NodeImgAdjust plugin' },
       { path: 'search', title: 'Search plugin' },
       { path: 'painter', title: 'Painter plugin' },
-      { path: 'scrollbar', title: 'Scrollbar plugin' }
+      { path: 'scrollbar', title: 'Scrollbar plugin' },
+      { path: 'formula', title: 'Formula plugin' },
+      { path: 'cooperate', title: 'Cooperate plugin' },
+      { path: 'rainbowLines', title: 'RainbowLines plugin' },
+      { path: 'demonstrate', title: 'Demonstrate plugin' },
+      { path: 'outerFrame', title: 'OuterFrame plugin' },
+      {
+        path: 'handDrawnLikeStyle',
+        title: 'HandDrawnLikeStyle chargeable plugin'
+      },
+      { path: 'notation', title: 'Notation chargeable plugin' },
+      { path: 'client', title: 'Client' }
     ]
   }
 ]

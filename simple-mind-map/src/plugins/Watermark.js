@@ -11,13 +11,60 @@ class Watermark {
     this.angle = 0 // 旋转角度
     this.text = '' // 水印文字
     this.textStyle = {} // 水印文字样式
-    this.watermarkDraw = this.mindMap.svg
-      .group()
-      .css({ 'pointer-events': 'none', 'user-select': 'none' })
-    this.maxLong = Math.sqrt(
+    this.watermarkDraw = null // 容器
+    this.isInExport = false // 是否是在导出过程中
+    this.maxLong = this.getMaxLong()
+    this.updateWatermark(this.mindMap.opt.watermarkConfig || {})
+    this.bindEvent()
+  }
+
+  getMaxLong() {
+    return Math.sqrt(
       Math.pow(this.mindMap.width, 2) + Math.pow(this.mindMap.height, 2)
     )
-    this.updateWatermark(this.mindMap.opt.watermarkConfig || {})
+  }
+
+  bindEvent() {
+    this.onResize = this.onResize.bind(this)
+    this.mindMap.on('resize', this.onResize)
+  }
+
+  unBindEvent() {
+    this.mindMap.off('resize', this.onResize)
+  }
+
+  onResize() {
+    this.maxLong = this.getMaxLong()
+    this.draw()
+  }
+
+  // 创建水印容器
+  createContainer() {
+    if (this.watermarkDraw) return
+    this.watermarkDraw = new G()
+      .css({ 'pointer-events': 'none', 'user-select': 'none' })
+      .addClass('smm-water-mark-container')
+    this.updateLayer()
+  }
+
+  // 更新水印容器层级
+  updateLayer() {
+    if (!this.watermarkDraw) return
+    const { belowNode } = this.mindMap.opt.watermarkConfig
+    if (belowNode) {
+      this.watermarkDraw.insertBefore(this.mindMap.draw)
+    } else {
+      this.mindMap.svg.add(this.watermarkDraw)
+    }
+  }
+
+  // 删除水印容器
+  removeContainer() {
+    if (!this.watermarkDraw) {
+      return
+    }
+    this.watermarkDraw.remove()
+    this.watermarkDraw = null
   }
 
   // 获取是否存在水印
@@ -37,13 +84,24 @@ class Watermark {
     this.textStyle = Object.assign(this.textStyle, textStyle || {})
   }
 
+  // 清除水印
+  clear() {
+    if (this.watermarkDraw) this.watermarkDraw.clear()
+  }
+
   // 绘制水印
   // 非精确绘制，会绘制一些超出可视区域的水印
   draw() {
-    this.watermarkDraw.clear()
+    this.clear()
+    // 如果是仅导出需要水印，那么非导出中不渲染
+    const { onlyExport } = this.mindMap.opt.watermarkConfig
+    if (onlyExport && !this.isInExport) return
+    // 如果没有水印数据，那么水印容器也删除掉
     if (!this.hasWatermark()) {
+      this.removeContainer()
       return
     }
+    this.createContainer()
     let x = 0
     while (x < this.mindMap.width) {
       this.drawText(x)
@@ -109,9 +167,25 @@ class Watermark {
 
   // 更新水印
   updateWatermark(config) {
-    this.mindMap.opt.watermarkConfig = merge(this.mindMap.opt.watermarkConfig, config)
+    this.mindMap.opt.watermarkConfig = merge(
+      this.mindMap.opt.watermarkConfig,
+      config
+    )
+    this.updateLayer()
     this.handleConfig(config)
     this.draw()
+  }
+
+  // 插件被移除前做的事情
+  beforePluginRemove() {
+    this.unBindEvent()
+    this.removeContainer()
+  }
+
+  // 插件被卸载前做的事情
+  beforePluginDestroy() {
+    this.unBindEvent()
+    this.removeContainer()
   }
 }
 

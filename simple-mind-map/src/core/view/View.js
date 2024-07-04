@@ -25,24 +25,20 @@ class View {
     this.mindMap.keyCommand.addShortcut('Control+-', () => {
       this.narrow()
     })
-    this.mindMap.keyCommand.addShortcut('Control+Enter', () => {
-      this.reset()
-    })
     this.mindMap.keyCommand.addShortcut('Control+i', () => {
       this.fit()
     })
-    this.mindMap.svg.on('dblclick', () => {
-      if (!this.mindMap.opt.enableDblclickReset) return
-      this.reset()
-    })
     // 拖动视图
-    this.mindMap.event.on('mousedown', () => {
+    this.mindMap.event.on('mousedown', e => {
+      if (this.mindMap.opt.isDisableDrag) return
+      e.preventDefault()
       this.sx = this.x
       this.sy = this.y
     })
     this.mindMap.event.on('drag', (e, event) => {
-      if (e.ctrlKey) {
-        // 按住ctrl键拖动为多选
+      // 按住ctrl键拖动为多选
+      // 禁用拖拽
+      if (e.ctrlKey || e.metaKey || this.mindMap.opt.isDisableDrag) {
         return
       }
       if (this.firstDrag) {
@@ -60,8 +56,8 @@ class View {
       this.firstDrag = true
     })
     // 放大缩小视图
-    this.mindMap.event.on('mousewheel', (e, dir, event, isTouchPad) => {
-      let {
+    this.mindMap.event.on('mousewheel', (e, dirs, event, isTouchPad) => {
+      const {
         customHandleMousewheel,
         mousewheelAction,
         mouseScaleCenterUseMousePosition,
@@ -76,53 +72,70 @@ class View {
       ) {
         return customHandleMousewheel(e)
       }
-      // 鼠标滚轮事件控制缩放
-      if (mousewheelAction === CONSTANTS.MOUSE_WHEEL_ACTION.ZOOM) {
+      // 1.鼠标滚轮事件控制缩放
+      if (
+        mousewheelAction === CONSTANTS.MOUSE_WHEEL_ACTION.ZOOM ||
+        e.ctrlKey ||
+        e.metaKey
+      ) {
         if (disableMouseWheelZoom) return
-        const { x: clientX, y: clientY } = this.mindMap.toPos(e.clientX, e.clientY)
-        let cx = mouseScaleCenterUseMousePosition ? clientX : undefined
-        let cy = mouseScaleCenterUseMousePosition ? clientY : undefined
-        switch (dir) {
+        const { x: clientX, y: clientY } = this.mindMap.toPos(
+          e.clientX,
+          e.clientY
+        )
+        const cx = mouseScaleCenterUseMousePosition ? clientX : undefined
+        const cy = mouseScaleCenterUseMousePosition ? clientY : undefined
+        // 如果来自触控板，那么过滤掉左右的移动
+        if (
+          isTouchPad &&
+          (dirs.includes(CONSTANTS.DIR.LEFT) ||
+            dirs.includes(CONSTANTS.DIR.RIGHT))
+        ) {
+          dirs = dirs.filter(dir => {
+            return ![CONSTANTS.DIR.LEFT, CONSTANTS.DIR.RIGHT].includes(dir)
+          })
+        }
+        switch (true) {
           // 鼠标滚轮，向上和向左，都是缩小
-          case CONSTANTS.DIR.UP:
-          case CONSTANTS.DIR.LEFT:
+          case dirs.includes(CONSTANTS.DIR.UP || CONSTANTS.DIR.LEFT):
             mousewheelZoomActionReverse
               ? this.enlarge(cx, cy, isTouchPad)
               : this.narrow(cx, cy, isTouchPad)
             break
           // 鼠标滚轮，向下和向右，都是放大
-          case CONSTANTS.DIR.DOWN:
-          case CONSTANTS.DIR.RIGHT:
+          case dirs.includes(CONSTANTS.DIR.DOWN || CONSTANTS.DIR.RIGHT):
             mousewheelZoomActionReverse
               ? this.narrow(cx, cy, isTouchPad)
               : this.enlarge(cx, cy, isTouchPad)
             break
         }
       } else {
-        // 鼠标滚轮事件控制画布移动
-        let step = mousewheelMoveStep
-        if (isTouchPad) {
-          step = 5
+        // 2.鼠标滚轮事件控制画布移动
+        const step = isTouchPad ? 10 : mousewheelMoveStep
+        let mx = 0
+        let my = 0
+        // 上移
+        if (dirs.includes(CONSTANTS.DIR.DOWN)) {
+          my = -step
         }
-        switch (dir) {
-          // 上移
-          case CONSTANTS.DIR.DOWN:
-            this.translateY(-step)
-            break
-          // 下移
-          case CONSTANTS.DIR.UP:
-            this.translateY(step)
-            break
-          // 右移
-          case CONSTANTS.DIR.LEFT:
-            this.translateX(-step)
-            break
-          // 左移
-          case CONSTANTS.DIR.RIGHT:
-            this.translateX(step)
-            break
+        // 下移
+        if (dirs.includes(CONSTANTS.DIR.UP)) {
+          my = step
         }
+        // 右移
+        if (dirs.includes(CONSTANTS.DIR.LEFT)) {
+          mx = step
+        }
+        // 左移
+        if (dirs.includes(CONSTANTS.DIR.RIGHT)) {
+          mx = -step
+        }
+        this.translateXY(mx, my)
       }
+    })
+    this.mindMap.on('resize', () => {
+      if (!this.checkNeedMindMapInCanvas()) return
+      this.transform()
     })
   }
 
@@ -150,7 +163,8 @@ class View {
         ...viewData.transform
       })
       this.mindMap.emit('view_data_change', this.getTransformData())
-      this.mindMap.emit('scale', this.scale)
+      this.emitEvent('scale')
+      this.emitEvent('translate')
     }
   }
 
@@ -160,6 +174,7 @@ class View {
     this.x += x
     this.y += y
     this.transform()
+    this.emitEvent('translate')
   }
 
   //  平移x方向
@@ -167,13 +182,14 @@ class View {
     if (step === 0) return
     this.x += step
     this.transform()
+    this.emitEvent('translate')
   }
 
   //  平移x方式到
   translateXTo(x) {
-    if (x === 0) return
     this.x = x
     this.transform()
+    this.emitEvent('translate')
   }
 
   //  平移y方向
@@ -181,17 +197,21 @@ class View {
     if (step === 0) return
     this.y += step
     this.transform()
+    this.emitEvent('translate')
   }
 
   //  平移y方向到
   translateYTo(y) {
-    if (y === 0) return
     this.y = y
     this.transform()
+    this.emitEvent('translate')
   }
 
   //   应用变换
   transform() {
+    try {
+      this.limitMindMapInCanvas()
+    } catch (error) {}
     this.mindMap.draw.transform({
       origin: [0, 0],
       scale: this.scale,
@@ -202,13 +222,17 @@ class View {
 
   //  恢复
   reset() {
-    let scaleChange = this.scale !== 1
+    const scaleChange = this.scale !== 1
+    const translateChange = this.x !== 0 || this.y !== 0
     this.scale = 1
     this.x = 0
     this.y = 0
     this.transform()
     if (scaleChange) {
-      this.mindMap.emit('scale', this.scale)
+      this.emitEvent('scale')
+    }
+    if (translateChange) {
+      this.emitEvent('translate')
     }
   }
 
@@ -218,7 +242,7 @@ class View {
     const scale = Math.max(this.scale - scaleRatio, 0.1)
     this.scaleInCenter(scale, cx, cy)
     this.transform()
-    this.mindMap.emit('scale', this.scale)
+    this.emitEvent('scale')
   }
 
   //  放大
@@ -227,7 +251,7 @@ class View {
     const scale = this.scale + scaleRatio
     this.scaleInCenter(scale, cx, cy)
     this.transform()
-    this.mindMap.emit('scale', this.scale)
+    this.emitEvent('scale')
   }
 
   // 基于指定中心进行缩放，cx，cy 可不指定，此时会使用画布中心点
@@ -253,26 +277,26 @@ class View {
       this.scale = scale
     }
     this.transform()
-    this.mindMap.emit('scale', this.scale)
+    this.emitEvent('scale')
   }
 
   // 适应画布大小
-  fit() {
-    let { fitPadding } = this.mindMap.opt
-    let draw = this.mindMap.draw
-    let origTransform = draw.transform()
-    let rect = draw.rbox()
-    let drawWidth = rect.width / origTransform.scaleX
-    let drawHeight = rect.height / origTransform.scaleY
-    let drawRatio = drawWidth / drawHeight
-    let { width: elWidth, height: elHeight } =
-      this.mindMap.el.getBoundingClientRect()
+  fit(getRbox = () => {}, enlarge = false, fitPadding) {
+    fitPadding =
+      fitPadding === undefined ? this.mindMap.opt.fitPadding : fitPadding
+    const draw = this.mindMap.draw
+    const origTransform = draw.transform()
+    const rect = getRbox() || draw.rbox()
+    const drawWidth = rect.width / origTransform.scaleX
+    const drawHeight = rect.height / origTransform.scaleY
+    const drawRatio = drawWidth / drawHeight
+    let { width: elWidth, height: elHeight } = this.mindMap.elRect
     elWidth = elWidth - fitPadding * 2
     elHeight = elHeight - fitPadding * 2
-    let elRatio = elWidth / elHeight
+    const elRatio = elWidth / elHeight
     let newScale = 0
     let flag = ''
-    if (drawWidth <= elWidth && drawHeight <= elHeight) {
+    if (drawWidth <= elWidth && drawHeight <= elHeight && !enlarge) {
       newScale = 1
       flag = 1
     } else {
@@ -290,7 +314,10 @@ class View {
       newScale = newWidth / drawWidth
     }
     this.setScale(newScale)
-    let newRect = draw.rbox()
+    const newRect = getRbox() || draw.rbox()
+    // 需要考虑画布容器距浏览器窗口左上角的距离
+    newRect.x -= this.mindMap.elRect.left
+    newRect.y -= this.mindMap.elRect.top
     let newX = 0
     let newY = 0
     if (flag === 1) {
@@ -304,6 +331,94 @@ class View {
       newY = -newRect.y + fitPadding
     }
     this.translateXY(newX, newY)
+  }
+
+  // 判断是否需要将思维导图限制在画布内
+  checkNeedMindMapInCanvas() {
+    const { isLimitMindMapInCanvasWhenHasScrollbar, isLimitMindMapInCanvas } =
+      this.mindMap.opt
+    // 如果注册了滚动条插件，那么使用isLimitMindMapInCanvasWhenHasScrollbar配置
+    if (this.mindMap.scrollbar) {
+      return isLimitMindMapInCanvasWhenHasScrollbar
+    } else {
+      // 否则使用isLimitMindMapInCanvas配置
+      return isLimitMindMapInCanvas
+    }
+  }
+
+  // 将思维导图限制在画布内
+  limitMindMapInCanvas() {
+    if (!this.checkNeedMindMapInCanvas()) return
+
+    let { scale, left, top, right, bottom } = this.getPositionLimit()
+
+    // 画布宽高改变了，但是思维导图元素变换的中心点依旧是原有位置，所以需要加上中心点变化量
+    const centerXChange =
+      ((this.mindMap.width - this.mindMap.initWidth) / 2) * scale
+    const centerYChange =
+      ((this.mindMap.height - this.mindMap.initHeight) / 2) * scale
+
+    // 如果缩放值改变了
+    const scaleRatio = this.scale / scale
+    left *= scaleRatio
+    right *= scaleRatio
+    top *= scaleRatio
+    bottom *= scaleRatio
+
+    // 加上画布中心点距离
+    const centerX = this.mindMap.width / 2
+    const centerY = this.mindMap.height / 2
+    const scaleOffset = this.scale - 1
+    left -= scaleOffset * centerX - centerXChange
+    right -= scaleOffset * centerX - centerXChange
+    top -= scaleOffset * centerY - centerYChange
+    bottom -= scaleOffset * centerY - centerYChange
+
+    // 判断是否超出边界
+    if (this.x > left) {
+      this.x = left
+    }
+    if (this.x < right) {
+      this.x = right
+    }
+    if (this.y > top) {
+      this.y = top
+    }
+    if (this.y < bottom) {
+      this.y = bottom
+    }
+  }
+
+  // 计算图形四个方向的位置边界值
+  getPositionLimit() {
+    const { scaleX, scaleY } = this.mindMap.draw.transform()
+    const drawRect = this.mindMap.draw.rbox()
+    const rootRect = this.mindMap.renderer.root.group.rbox()
+    const rootCenterOffset = this.mindMap.renderer.layout.getRootCenterOffset(
+      rootRect.width,
+      rootRect.height
+    )
+    const left = rootRect.x - drawRect.x - rootCenterOffset.x * scaleX
+    const right = rootRect.x - drawRect.x2 - rootCenterOffset.x * scaleX
+    const top = rootRect.y - drawRect.y - rootCenterOffset.y * scaleY
+    const bottom = rootRect.y - drawRect.y2 - rootCenterOffset.y * scaleY
+    return {
+      scale: scaleX,
+      left,
+      right,
+      top,
+      bottom
+    }
+  }
+
+  // 派发事件
+  emitEvent(type) {
+    switch (type) {
+      case 'scale':
+        this.mindMap.emit('scale', this.scale)
+      case 'translate':
+        this.mindMap.emit('translate', this.x, this.y)
+    }
   }
 }
 

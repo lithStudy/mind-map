@@ -8,6 +8,7 @@
 <p>v0.6.0+</p>
 </blockquote>
 <p>缩放思维导图至适应画布。</p>
+<p>注意该方法不能在<code>setData</code>、<code>setFullData</code>方法调用后立即调用，需要监听<code>node_tree_render_end</code>事件调用<code>fit</code>。</p>
 <h3>translateX(step)</h3>
 <p><code>x</code>方向进行平移，<code>step</code>：要平移的像素</p>
 <h3>translateY(step)</h3>
@@ -59,6 +60,9 @@
 <p>v0.2.17+</p>
 </blockquote>
 <ul>
+<li>
+<p><code>scale</code>: 缩放数值，未缩放为<code>1</code>，小于为<code>1</code>缩小，大于<code>1</code>为放大</p>
+</li>
 <li>
 <p><code>cx</code>：（v0.6.4+）以画布指定位置进行缩放，默认为画布中心点</p>
 </li>

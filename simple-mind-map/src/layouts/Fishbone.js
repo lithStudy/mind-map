@@ -1,5 +1,5 @@
 import Base from './Base'
-import { walk, asyncRun, degToRad } from '../utils'
+import { walk, asyncRun, degToRad, getNodeIndexInNodeList } from '../utils'
 import { CONSTANTS } from '../constants/constant'
 import utils from './fishboneUtils'
 
@@ -112,7 +112,7 @@ class Fishbone extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (!node.nodeData.data.expand) {
+        if (!node.getData('expand')) {
           return
         }
         let params = { node, parent, layerIndex, ctx: this }
@@ -159,7 +159,8 @@ class Fishbone extends Base {
       let marginY = this.getMarginY(node.layerIndex)
       totalHeight +=
         node.height +
-        (this.getNodeActChildrenLength(node) > 0 ? node.expandBtnSize : 0) + marginY
+        (this.getNodeActChildrenLength(node) > 0 ? node.expandBtnSize : 0) +
+        marginY
       if (node.children.length) {
         node.children.forEach(item => {
           loop(item)
@@ -192,9 +193,7 @@ class Fishbone extends Base {
   updateBrothersTop(node, addHeight) {
     if (node.parent && !node.parent.isRoot) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition()) {
           // 适配自定义位置
@@ -251,18 +250,22 @@ class Fishbone extends Base {
         let nodeLineX = item.left
         let offset = node.height / 2 + marginY
         let offsetX = offset / Math.tan(degToRad(this.mindMap.opt.fishboneDeg))
-        let line = this.draw.path()
+        let line = this.lineDraw.path()
         if (this.checkIsTop(item)) {
           line.plot(
-            `M ${nodeLineX - offsetX},${item.top + item.height + offset} L ${
-              item.left
-            },${item.top + item.height}`
+            this.transformPath(
+              `M ${nodeLineX - offsetX},${item.top + item.height + offset} L ${
+                item.left
+              },${item.top + item.height}`
+            )
           )
         } else {
           line.plot(
-            `M ${nodeLineX - offsetX},${item.top - offset} L ${nodeLineX},${
-              item.top
-            }`
+            this.transformPath(
+              `M ${nodeLineX - offsetX},${item.top - offset} L ${nodeLineX},${
+                item.top
+              }`
+            )
           )
         }
         node.style.line(line)
@@ -272,11 +275,13 @@ class Fishbone extends Base {
       // 从根节点出发的水平线
       let nodeHalfTop = node.top + node.height / 2
       let offset = node.height / 2 + this.getMarginY(node.layerIndex + 1)
-      let line = this.draw.path()
+      let line = this.lineDraw.path()
       line.plot(
-        `M ${node.left + node.width},${nodeHalfTop} L ${
-          maxx - offset / Math.tan(degToRad(this.mindMap.opt.fishboneDeg))
-        },${nodeHalfTop}`
+        this.transformPath(
+          `M ${node.left + node.width},${nodeHalfTop} L ${
+            maxx - offset / Math.tan(degToRad(this.mindMap.opt.fishboneDeg))
+          },${nodeHalfTop}`
+        )
       )
       node.style.line(line)
       node._lines.push(line)
@@ -301,13 +306,12 @@ class Fishbone extends Base {
         // 水平线
         if (node.layerIndex > 1) {
           let path = `M ${x},${y} L ${item.left},${y}`
-          lines[index].plot(path)
-          style && style(lines[index], item)
+          this.setLineStyle(style, lines[index], path, item)
         }
       })
       // 斜线
       if (len >= 0) {
-        let line = this.draw.path()
+        let line = this.lineDraw.path()
         expandBtnSize = len > 0 ? expandBtnSize : 0
         let lineLength = maxx - node.left - node.width * this.indent
         lineLength = Math.max(lineLength, 0)
@@ -358,24 +362,27 @@ class Fishbone extends Base {
   }
 
   //  创建概要节点
-  renderGeneralization(node, gLine, gNode) {
-    let {
-      top,
-      bottom,
-      right,
-      generalizationLineMargin,
-      generalizationNodeMargin
-    } = this.getNodeBoundaries(node, 'h')
-    let x1 = right + generalizationLineMargin
-    let y1 = top
-    let x2 = right + generalizationLineMargin
-    let y2 = bottom
-    let cx = x1 + 20
-    let cy = y1 + (y2 - y1) / 2
-    let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
-    gLine.plot(path)
-    gNode.left = right + generalizationNodeMargin
-    gNode.top = top + (bottom - top - gNode.height) / 2
+  renderGeneralization(list) {
+    list.forEach(item => {
+      let {
+        top,
+        bottom,
+        right,
+        generalizationLineMargin,
+        generalizationNodeMargin
+      } = this.getNodeGeneralizationRenderBoundaries(item, 'h')
+      let x1 = right + generalizationLineMargin
+      let y1 = top
+      let x2 = right + generalizationLineMargin
+      let y2 = bottom
+      let cx = x1 + 20
+      let cy = y1 + (y2 - y1) / 2
+      let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
+      item.generalizationLine.plot(this.transformPath(path))
+      item.generalizationNode.left = right + generalizationNodeMargin
+      item.generalizationNode.top =
+        top + (bottom - top - item.generalizationNode.height) / 2
+    })
   }
 
   // 渲染展开收起按钮的隐藏占位元素

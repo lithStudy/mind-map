@@ -1,5 +1,5 @@
 import Base from './Base'
-import { walk, asyncRun } from '../utils'
+import { walk, asyncRun, getNodeIndexInNodeList } from '../utils'
 import { CONSTANTS } from '../constants/constant'
 
 //  思维导图
@@ -90,6 +90,20 @@ class MindMap extends Base {
         cur._node.rightChildrenAreaHeight =
           rightChildrenAreaHeight +
           (rightLen + 1) * this.getMarginY(layerIndex + 1)
+
+        // 如果存在概要，则和概要的高度取最大值
+        let generalizationNodeHeight = cur._node.checkHasGeneralization()
+          ? cur._node._generalizationNodeHeight +
+            this.getMarginY(layerIndex + 1)
+          : 0
+        cur._node.leftChildrenAreaHeight2 = Math.max(
+          cur._node.leftChildrenAreaHeight,
+          generalizationNodeHeight
+        )
+        cur._node.rightChildrenAreaHeight2 = Math.max(
+          cur._node.rightChildrenAreaHeight,
+          generalizationNodeHeight
+        )
       },
       true,
       0
@@ -102,11 +116,7 @@ class MindMap extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (
-          node.nodeData.data.expand &&
-          node.children &&
-          node.children.length
-        ) {
+        if (node.getData('expand') && node.children && node.children.length) {
           let marginY = this.getMarginY(layerIndex + 1)
           let baseTop = node.top + node.height / 2 + marginY
           // 第一个子节点的top值 = 该节点中心的top值 - 子节点的高度之和的一半
@@ -134,13 +144,13 @@ class MindMap extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (!node.nodeData.data.expand) {
+        if (!node.getData('expand')) {
           return
         }
         // 判断子节点所占的高度之和是否大于该节点自身，大于则需要调整位置
         let base = this.getMarginY(layerIndex + 1) * 2 + node.height
-        let leftDifference = node.leftChildrenAreaHeight - base
-        let rightDifference = node.rightChildrenAreaHeight - base
+        let leftDifference = node.leftChildrenAreaHeight2 - base
+        let rightDifference = node.rightChildrenAreaHeight2 - base
         if (leftDifference > 0 || rightDifference > 0) {
           this.updateBrothers(node, leftDifference / 2, rightDifference / 2)
         }
@@ -157,9 +167,7 @@ class MindMap extends Base {
       let childrenList = node.parent.children.filter(item => {
         return item.dir === node.dir
       })
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition()) {
           // 适配自定义位置
@@ -232,11 +240,13 @@ class MindMap extends Base {
       let y2 = item.top + item.height / 2
       y1 = nodeUseLineStyle && !node.isRoot ? y1 + height / 2 : y1
       y2 = nodeUseLineStyle ? y2 + item.height / 2 : y2
-      let path = `M ${x1},${y1} L ${x1 + _s},${y1} L ${x1 + _s},${y2} L ${
-        x2 + nodeUseLineStyleOffset
-      },${y2}`
-      lines[index].plot(path)
-      style && style(lines[index], item)
+      let path = this.createFoldLine([
+        [x1, y1],
+        [x1 + _s, y1],
+        [x1 + _s, y2],
+        [x2 + nodeUseLineStyleOffset, y2]
+      ])
+      this.setLineStyle(style, lines[index], path, item)
     })
   }
 
@@ -249,12 +259,13 @@ class MindMap extends Base {
     if (!this.mindMap.opt.alwaysShowExpandBtn) {
       expandBtnSize = 0
     }
-    let nodeUseLineStyle = this.mindMap.themeConfig.nodeUseLineStyle
+    const { nodeUseLineStyle } = this.mindMap.themeConfig
     node.children.forEach((item, index) => {
+      if (node.layerIndex === 0) {
+        expandBtnSize = 0
+      }
       let x1 =
-        node.layerIndex === 0
-          ? left + width / 2
-          : item.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
+        item.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
           ? left - expandBtnSize
           : left + width + expandBtnSize
       let y1 = top + height / 2
@@ -275,8 +286,7 @@ class MindMap extends Base {
         }
       }
       let path = `M ${x1},${y1} L ${x2},${y2}` + nodeUseLineStylePath
-      lines[index].plot(path)
-      style && style(lines[index], item)
+      this.setLineStyle(style, lines[index], path, item)
     })
   }
 
@@ -289,10 +299,17 @@ class MindMap extends Base {
     if (!this.mindMap.opt.alwaysShowExpandBtn) {
       expandBtnSize = 0
     }
-    let nodeUseLineStyle = this.mindMap.themeConfig.nodeUseLineStyle
+    const {
+      nodeUseLineStyle,
+      rootLineKeepSameInCurve,
+      rootLineStartPositionKeepSameInCurve
+    } = this.mindMap.themeConfig
     node.children.forEach((item, index) => {
+      if (node.layerIndex === 0) {
+        expandBtnSize = 0
+      }
       let x1 =
-        node.layerIndex === 0
+        node.layerIndex === 0 && !rootLineStartPositionKeepSameInCurve
           ? left + width / 2
           : item.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
           ? left - expandBtnSize
@@ -308,20 +325,19 @@ class MindMap extends Base {
       y2 = nodeUseLineStyle ? y2 + item.height / 2 : y2
       // 节点使用横线风格，需要额外渲染横线
       let nodeUseLineStylePath = ''
-      if (this.mindMap.themeConfig.nodeUseLineStyle) {
+      if (nodeUseLineStyle) {
         if (item.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT) {
           nodeUseLineStylePath = ` L ${item.left},${y2}`
         } else {
           nodeUseLineStylePath = ` L ${item.left + item.width},${y2}`
         }
       }
-      if (node.isRoot && !this.mindMap.themeConfig.rootLineKeepSameInCurve) {
+      if (node.isRoot && !rootLineKeepSameInCurve) {
         path = this.quadraticCurvePath(x1, y1, x2, y2) + nodeUseLineStylePath
       } else {
         path = this.cubicBezierPath(x1, y1, x2, y2) + nodeUseLineStylePath
       }
-      lines[index].plot(path)
-      style && style(lines[index], item)
+      this.setLineStyle(style, lines[index], path, item)
     })
   }
 
@@ -346,32 +362,35 @@ class MindMap extends Base {
   }
 
   //  创建概要节点
-  renderGeneralization(node, gLine, gNode) {
-    let isLeft = node.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
-    let {
-      top,
-      bottom,
-      left,
-      right,
-      generalizationLineMargin,
-      generalizationNodeMargin
-    } = this.getNodeBoundaries(node, 'h', isLeft)
-    let x = isLeft
-      ? left - generalizationLineMargin
-      : right + generalizationLineMargin
-    let x1 = x
-    let y1 = top
-    let x2 = x
-    let y2 = bottom
-    let cx = x1 + (isLeft ? -20 : 20)
-    let cy = y1 + (y2 - y1) / 2
-    let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
-    gLine.plot(path)
-    gNode.left =
-      x +
-      (isLeft ? -generalizationNodeMargin : generalizationNodeMargin) -
-      (isLeft ? gNode.width : 0)
-    gNode.top = top + (bottom - top - gNode.height) / 2
+  renderGeneralization(list) {
+    list.forEach(item => {
+      let isLeft = item.node.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
+      let {
+        top,
+        bottom,
+        left,
+        right,
+        generalizationLineMargin,
+        generalizationNodeMargin
+      } = this.getNodeGeneralizationRenderBoundaries(item, 'h')
+      let x = isLeft
+        ? left - generalizationLineMargin
+        : right + generalizationLineMargin
+      let x1 = x
+      let y1 = top
+      let x2 = x
+      let y2 = bottom
+      let cx = x1 + (isLeft ? -20 : 20)
+      let cy = y1 + (y2 - y1) / 2
+      let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
+      item.generalizationLine.plot(path)
+      item.generalizationNode.left =
+        x +
+        (isLeft ? -generalizationNodeMargin : generalizationNodeMargin) -
+        (isLeft ? item.generalizationNode.width : 0)
+      item.generalizationNode.top =
+        top + (bottom - top - item.generalizationNode.height) / 2
+    })
   }
 
   // 渲染展开收起按钮的隐藏占位元素

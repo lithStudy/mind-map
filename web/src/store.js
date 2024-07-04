@@ -17,38 +17,32 @@ const store = new Vuex.Store({
       // 鼠标行为
       useLeftKeySelectionRightKeyDrag: false,
       // 是否显示滚动条
-      isShowScrollbar: false
+      isShowScrollbar: false,
+      // 是否开启手绘风格
+      isUseHandDrawnLikeStyle: false,
+      // 是否是暗黑模式
+      isDark: false
     },
     activeSidebar: '', // 当前显示的侧边栏
-    isDark: false,// 是否是暗黑模式
-    isOutlineEdit: false// 是否是大纲编辑模式
+    isOutlineEdit: false, // 是否是大纲编辑模式
+    isReadonly: false, // 是否只读
+    isSourceCodeEdit: false, // 是否是源码编辑模式
+    extraTextOnExport: '', // 导出时底部添加的文字
+    supportHandDrawnLikeStyle: false, // 是否支持设置手绘风格
+    supportMark: false // 是否支持标记
   },
   mutations: {
-    /**
-     * @Author: 王林
-     * @Date: 2021-04-10 14:50:01
-     * @Desc: 设置思维导图数据
-     */
+    // 设置思维导图数据
     setMindMapData(state, data) {
       state.mindMapData = data
     },
 
-    /**
-     * javascript comment
-     * @Author: 王林
-     * @Date: 2022-09-24 13:55:38
-     * @Desc: 设置操作本地文件标志位
-     */
+    // 设置操作本地文件标志位
     setIsHandleLocalFile(state, data) {
       state.isHandleLocalFile = data
     },
 
-    /**
-     * javascript comment
-     * @Author: 王林25
-     * @Date: 2022-11-14 18:42:47
-     * @Desc: 设置本地配置
-     */
+    // 设置本地配置
     setLocalConfig(state, data) {
       state.localConfig = {
         ...state.localConfig,
@@ -57,32 +51,43 @@ const store = new Vuex.Store({
       storeLocalConfig(state.localConfig)
     },
 
-    /**
-     * javascript comment
-     * @Author: 王林25
-     * @Date: 2022-11-15 19:25:26
-     * @Desc: 设置当前显示的侧边栏
-     */
+    // 设置当前显示的侧边栏
     setActiveSidebar(state, data) {
       state.activeSidebar = data
-    },
-
-    // 设置暗黑模式
-    setIsDark(state, data) {
-      state.isDark = data
     },
 
     // 设置大纲编辑模式
     setIsOutlineEdit(state, data) {
       state.isOutlineEdit = data
+    },
+
+    // 设置是否只读
+    setIsReadonly(state, data) {
+      state.isReadonly = data
+    },
+
+    // 设置源码编辑模式
+    setIsSourceCodeEdit(state, data) {
+      state.isSourceCodeEdit = data
+    },
+
+    // 设置导出时底部添加的文字
+    setExtraTextOnExport(state, data) {
+      state.extraTextOnExport = data
+    },
+
+    // 设置是否支持手绘风格
+    setSupportHandDrawnLikeStyle(state, data) {
+      state.supportHandDrawnLikeStyle = data
+    },
+
+    // 设置是否支持标记
+    setSupportMark(state, data) {
+      state.supportMark = data
     }
   },
   actions: {
-    /**
-     * @Author: 王林
-     * @Date: 2021-04-10 14:50:40
-     * @Desc: 设置初始思维导图数据
-     */
+    // 设置初始思维导图数据
     getUserMindMapData(ctx) {
       try {
         let { data } = {

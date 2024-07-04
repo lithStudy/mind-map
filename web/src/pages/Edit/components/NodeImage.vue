@@ -3,7 +3,8 @@
     class="nodeImageDialog"
     :title="$t('nodeImage.title')"
     :visible.sync="dialogVisible"
-    width="500"
+    :width="isMobile ? '90%' : '50%'"
+    :top="isMobile ? '20px' : '15vh'"
   >
     <div class="title">方式一</div>
     <ImgUpload
@@ -37,7 +38,7 @@
 
 <script>
 import ImgUpload from '@/components/ImgUpload'
-import { getImageSize } from 'simple-mind-map/src/utils/index'
+import { getImageSize, isMobile } from 'simple-mind-map/src/utils/index'
 
 /**
  * @Author: 王林
@@ -55,7 +56,8 @@ export default {
       img: '',
       imgUrl: '',
       imgTitle: '',
-      activeNodes: null
+      activeNodes: null,
+      isMobile: isMobile()
     }
   },
   created() {
@@ -75,7 +77,7 @@ export default {
       this.reset()
       if (this.activeNodes.length > 0) {
         let firstNode = this.activeNodes[0]
-        let img = firstNode.getData('image')
+        let img = firstNode.getData('image') || ''
         if (img) {
           if (/^https?:\/\//.test(img)) {
             this.imgUrl = img
@@ -83,7 +85,7 @@ export default {
             this.img = img
           }
         }
-        this.imgTitle = firstNode.getData('imageTitle')
+        this.imgTitle = firstNode.getData('imageTitle') || ''
       }
       this.dialogVisible = true
     },

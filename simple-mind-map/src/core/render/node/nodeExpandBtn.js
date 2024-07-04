@@ -52,7 +52,7 @@ function sumNode(data = []) {
 }
 //  创建或更新展开收缩按钮内容
 function updateExpandBtnNode() {
-  let { expand } = this.nodeData.data
+  let { expand } = this.getData()
   // 如果本次和上次的展开状态一样则返回
   if (expand === this._lastExpandBtnType) return
   if (this._expandBtn) {
@@ -70,7 +70,8 @@ function updateExpandBtnNode() {
 
   if (this._expandBtn) {
     // 如果是收起按钮加上边框
-    let { isShowExpandNum, expandBtnStyle, expandBtnNumHandler } = this.mindMap.opt
+    let { isShowExpandNum, expandBtnStyle, expandBtnNumHandler } =
+      this.mindMap.opt
     if (isShowExpandNum) {
       if (!expand) {
         // 数字按钮添加边框
@@ -128,13 +129,14 @@ function renderExpandBtn() {
       this.mindMap.execCommand(
         'SET_NODE_EXPAND',
         this,
-        !this.nodeData.data.expand
+        !this.getData('expand')
       )
       this.mindMap.emit('expand_btn_click', this)
     })
     this._expandBtn.on('dblclick', e => {
       e.stopPropagation()
     })
+    this._expandBtn.addClass('smm-expand-btn')
     this.group.add(this._expandBtn)
   }
   this._showExpandBtn = true
@@ -162,7 +164,7 @@ function showExpandBtn() {
 function hideExpandBtn() {
   if (this.mindMap.opt.alwaysShowExpandBtn || this._isMouseenter) return
   // 非激活状态且展开状态鼠标移出才隐藏按钮
-  let { isActive, expand } = this.nodeData.data
+  let { isActive, expand } = this.getData()
   if (!isActive && expand) {
     setTimeout(() => {
       this.removeExpandBtn()

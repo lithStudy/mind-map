@@ -1,4 +1,10 @@
-import { bfsWalk, getTextFromHtml, isUndef, replaceHtmlText } from '../utils/index'
+import {
+  bfsWalk,
+  getTextFromHtml,
+  isUndef,
+  replaceHtmlText
+} from '../utils/index'
+import Node from '../core/render/node/Node'
 
 // 搜索插件
 class Search {
@@ -17,8 +23,17 @@ class Search {
     this.notResetSearchText = false
     // 是否自动跳转下一个匹配节点
     this.isJumpNext = false
+
+    this.bindEvent()
+  }
+
+  bindEvent() {
     this.onDataChange = this.onDataChange.bind(this)
     this.mindMap.on('data_change', this.onDataChange)
+  }
+
+  unBindEvent() {
+    this.mindMap.off('data_change', this.onDataChange)
   }
 
   // 节点数据改变了，需要重新搜索
@@ -55,6 +70,9 @@ class Search {
   // 结束搜索
   endSearch() {
     if (!this.isSearching) return
+    if (this.mindMap.opt.readonly && this.matchNodeList[this.currentIndex]) {
+      this.matchNodeList[this.currentIndex].closeHighlight()
+    }
     this.searchText = ''
     this.matchNodeList = []
     this.currentIndex = -1
@@ -67,8 +85,16 @@ class Search {
   doSearch() {
     this.matchNodeList = []
     this.currentIndex = -1
-    bfsWalk(this.mindMap.renderer.root, node => {
-      let { richText, text } = node.nodeData.data
+    const { isOnlySearchCurrentRenderNodes } = this.mindMap.opt
+    // 如果要搜索收起来的节点，那么要遍历渲染树而不是节点树
+    const tree = isOnlySearchCurrentRenderNodes
+      ? this.mindMap.renderer.root
+      : this.mindMap.renderer.renderTree
+    if (!tree) return
+    bfsWalk(tree, node => {
+      let { richText, text } = isOnlySearchCurrentRenderNodes
+        ? node.getData()
+        : node.data
       if (richText) {
         text = getTextFromHtml(text)
       }
@@ -76,6 +102,11 @@ class Search {
         this.matchNodeList.push(node)
       }
     })
+  }
+
+  // 判断对象是否是节点实例
+  isNodeInstance(node) {
+    return node instanceof Node
   }
 
   // 搜索下一个，定位到下一个匹配节点
@@ -86,11 +117,25 @@ class Search {
     } else {
       this.currentIndex = 0
     }
-    let currentNode = this.matchNodeList[this.currentIndex]
+    const currentNode = this.matchNodeList[this.currentIndex]
     this.notResetSearchText = true
-    this.mindMap.execCommand('GO_TARGET_NODE', currentNode, () => {
-      this.notResetSearchText = false
+    const uid = this.isNodeInstance(currentNode)
+      ? currentNode.getData('uid')
+      : currentNode.data.uid
+    const targetNode = this.mindMap.renderer.findNodeByUid(uid)
+    this.mindMap.execCommand('GO_TARGET_NODE', uid, node => {
+      if (!this.isNodeInstance(currentNode)) {
+        this.matchNodeList[this.currentIndex] = node
+      }
       callback()
+      // 只读模式下节点无法激活，所以通过高亮的方式
+      if (this.mindMap.opt.readonly) {
+        node.highlight()
+      }
+      // 如果当前节点实例已经存在，则不会触发data_change事件，那么需要手动把标志复位
+      if (targetNode) {
+        this.notResetSearchText = false
+      }
     })
   }
 
@@ -110,7 +155,7 @@ class Search {
     if (!currentNode) return
     let text = this.getReplacedText(currentNode, this.searchText, replaceText)
     this.notResetSearchText = true
-    currentNode.setText(text, currentNode.nodeData.data.richText, true)
+    currentNode.setText(text, currentNode.getData('richText'), true)
     this.matchNodeList = this.matchNodeList.filter(node => {
       return currentNode !== node
     })
@@ -133,15 +178,20 @@ class Search {
       return
     replaceText = String(replaceText)
     this.matchNodeList.forEach(node => {
-      let text = this.getReplacedText(node, this.searchText, replaceText)
-      this.mindMap.renderer.setNodeDataRender(
-        node,
-        {
-          text,
-          resetRichText: !!node.nodeData.data.richText
-        },
-        true
-      )
+      const text = this.getReplacedText(node, this.searchText, replaceText)
+      if (this.isNodeInstance(node)) {
+        this.mindMap.renderer.setNodeDataRender(
+          node,
+          {
+            text,
+            resetRichText: !!node.getData('richText')
+          },
+          true
+        )
+      } else {
+        node.data.text = text
+        node.data.resetRichText = !!node.data.richText
+      }
     })
     this.mindMap.render()
     this.mindMap.command.addHistory()
@@ -150,7 +200,9 @@ class Search {
 
   // 获取某个节点替换后的文本
   getReplacedText(node, searchText, replaceText) {
-    let { richText, text } = node.nodeData.data
+    let { richText, text } = this.isNodeInstance(node)
+      ? node.getData()
+      : node.data
     if (richText) {
       return replaceHtmlText(text, searchText, replaceText)
     } else {
@@ -164,6 +216,16 @@ class Search {
       currentIndex: this.currentIndex,
       total: this.matchNodeList.length
     })
+  }
+
+  // 插件被移除前做的事情
+  beforePluginRemove() {
+    this.unBindEvent()
+  }
+
+  // 插件被卸载前做的事情
+  beforePluginDestroy() {
+    this.unBindEvent()
   }
 }
 

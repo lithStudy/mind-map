@@ -1,5 +1,5 @@
 import Base from './Base'
-import { walk, asyncRun } from '../utils'
+import { walk, asyncRun, getNodeIndexInNodeList } from '../utils'
 
 //  目录组织图
 class CatalogOrganization extends Base {
@@ -72,11 +72,7 @@ class CatalogOrganization extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (
-          node.nodeData.data.expand &&
-          node.children &&
-          node.children.length
-        ) {
+        if (node.getData('expand') && node.children && node.children.length) {
           let marginX = this.getMarginX(layerIndex + 1)
           let marginY = this.getMarginY(layerIndex + 1)
           if (isRoot) {
@@ -87,11 +83,18 @@ class CatalogOrganization extends Base {
               totalLeft += cur.width + marginX
             })
           } else {
-            let totalTop = node.top + node.height + marginY + (this.getNodeActChildrenLength(node) > 0 ? node.expandBtnSize : 0)
+            let totalTop =
+              node.top +
+              this.getNodeHeightWithGeneralization(node) +
+              marginY +
+              (this.getNodeActChildrenLength(node) > 0 ? node.expandBtnSize : 0)
             node.children.forEach(cur => {
               cur.left = node.left + node.width * 0.5
               cur.top = totalTop
-              totalTop += cur.height + marginY + (this.getNodeActChildrenLength(cur) > 0 ? cur.expandBtnSize : 0)
+              totalTop +=
+                this.getNodeHeightWithGeneralization(cur) +
+                marginY +
+                (this.getNodeActChildrenLength(cur) > 0 ? cur.expandBtnSize : 0)
             })
           }
         }
@@ -107,12 +110,12 @@ class CatalogOrganization extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (!node.nodeData.data.expand) {
+        if (!node.getData('expand')) {
           return
         }
         // 调整left
         if (parent && parent.isRoot) {
-          let areaWidth = this.getNodeAreaWidth(node)
+          let areaWidth = this.getNodeAreaWidth(node, true)
           let difference = areaWidth - node.width
           if (difference > 0) {
             this.updateBrothersLeft(node, difference)
@@ -124,7 +127,13 @@ class CatalogOrganization extends Base {
           let marginY = this.getMarginY(layerIndex + 1)
           let totalHeight =
             node.children.reduce((h, item) => {
-              return h + item.height + (this.getNodeActChildrenLength(item) > 0 ? item.expandBtnSize : 0)
+              return (
+                h +
+                this.getNodeHeightWithGeneralization(item) +
+                (this.getNodeActChildrenLength(item) > 0
+                  ? item.expandBtnSize
+                  : 0)
+              )
             }, 0) +
             len * marginY
           this.updateBrothersTop(node, totalHeight)
@@ -134,7 +143,7 @@ class CatalogOrganization extends Base {
         if (isRoot) {
           let { right, left } = this.getNodeBoundaries(node, 'h')
           let childrenWidth = right - left
-          let offset = (node.left - left) - (childrenWidth - node.width) / 2
+          let offset = node.left - left - (childrenWidth - node.width) / 2
           this.updateChildren(node.children, 'left', offset)
         }
       },
@@ -146,9 +155,7 @@ class CatalogOrganization extends Base {
   updateBrothersLeft(node, addWidth) {
     if (node.parent) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition() || _index <= index) {
           // 适配自定义位置
@@ -169,9 +176,7 @@ class CatalogOrganization extends Base {
   updateBrothersTop(node, addHeight) {
     if (node.parent && !node.parent.isRoot) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition()) {
           // 适配自定义位置
@@ -228,22 +233,21 @@ class CatalogOrganization extends Base {
           `M ${x2},${y1 + s1} L ${x2},${y1 + s1 > y2 ? y2 + item.height : y2}` +
           nodeUseLineStylePath
         // 竖线
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
       })
       minx = Math.min(minx, x1)
       maxx = Math.max(maxx, x1)
       // 父节点的竖线
-      let line1 = this.draw.path()
+      let line1 = this.lineDraw.path()
       node.style.line(line1)
-      line1.plot(`M ${x1},${y1} L ${x1},${y1 + s1}`)
+      line1.plot(this.transformPath(`M ${x1},${y1} L ${x1},${y1 + s1}`))
       node._lines.push(line1)
       style && style(line1, node)
       // 水平线
       if (len > 0) {
-        let lin2 = this.draw.path()
+        let lin2 = this.lineDraw.path()
         node.style.line(lin2)
-        lin2.plot(`M ${minx},${y1 + s1} L ${maxx},${y1 + s1}`)
+        lin2.plot(this.transformPath(`M ${minx},${y1 + s1} L ${maxx},${y1 + s1}`))
         node._lines.push(lin2)
         style && style(lin2, node)
       }
@@ -297,18 +301,19 @@ class CatalogOrganization extends Base {
             }`
           : ''
         path += nodeUseLineStylePath
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
       })
       // 竖线
       if (len > 0) {
-        let lin2 = this.draw.path()
+        let lin2 = this.lineDraw.path()
         expandBtnSize = len > 0 ? expandBtnSize : 0
         node.style.line(lin2)
         if (maxy < y1 + expandBtnSize) {
           lin2.hide()
         } else {
-          lin2.plot(`M ${x2},${y1 + expandBtnSize} L ${x2},${maxy}`)
+          lin2.plot(
+            this.transformPath(`M ${x2},${y1 + expandBtnSize} L ${x2},${maxy}`)
+          )
           lin2.show()
         }
         node._lines.push(lin2)
@@ -330,24 +335,27 @@ class CatalogOrganization extends Base {
   }
 
   //  创建概要节点
-  renderGeneralization(node, gLine, gNode) {
-    let {
-      top,
-      bottom,
-      right,
-      generalizationLineMargin,
-      generalizationNodeMargin
-    } = this.getNodeBoundaries(node, 'h')
-    let x1 = right + generalizationLineMargin
-    let y1 = top
-    let x2 = right + generalizationLineMargin
-    let y2 = bottom
-    let cx = x1 + 20
-    let cy = y1 + (y2 - y1) / 2
-    let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
-    gLine.plot(path)
-    gNode.left = right + generalizationNodeMargin
-    gNode.top = top + (bottom - top - gNode.height) / 2
+  renderGeneralization(list) {
+    list.forEach(item => {
+      let {
+        top,
+        bottom,
+        right,
+        generalizationLineMargin,
+        generalizationNodeMargin
+      } = this.getNodeGeneralizationRenderBoundaries(item, 'h')
+      let x1 = right + generalizationLineMargin
+      let y1 = top
+      let x2 = right + generalizationLineMargin
+      let y2 = bottom
+      let cx = x1 + 20
+      let cy = y1 + (y2 - y1) / 2
+      let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
+      item.generalizationLine.plot(this.transformPath(path))
+      item.generalizationNode.left = right + generalizationNodeMargin
+      item.generalizationNode.top =
+        top + (bottom - top - item.generalizationNode.height) / 2
+    })
   }
 
   // 渲染展开收起按钮的隐藏占位元素

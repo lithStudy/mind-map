@@ -13,3 +13,4 @@ if (fs.existsSync(src)) {
     fs.unlinkSync(src)
 }
 
+console.warn('请检查手绘风格、标记插件是否启用！！！')

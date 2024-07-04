@@ -15,7 +15,7 @@ import associativeLineTextMethods from './associativeLine/associativeLineText'
 class AssociativeLine {
   constructor(opt = {}) {
     this.mindMap = opt.mindMap
-    this.draw = this.mindMap.draw
+    this.associativeLineDraw = this.mindMap.associativeLineDraw
     // 当前所有连接线
     this.lineList = []
     // 当前激活的连接线
@@ -59,53 +59,80 @@ class AssociativeLine {
 
   // 监听事件
   bindEvent() {
-    // 节点树渲染完毕后渲染连接线
     this.renderAllLines = this.renderAllLines.bind(this)
+    this.onDrawClick = this.onDrawClick.bind(this)
+    this.onNodeClick = this.onNodeClick.bind(this)
+    this.removeLine = this.removeLine.bind(this)
+    this.addLine = this.addLine.bind(this)
+    this.onMousemove = this.onMousemove.bind(this)
+    this.onNodeDragging = this.onNodeDragging.bind(this)
+    this.onNodeDragend = this.onNodeDragend.bind(this)
+    this.onControlPointMouseup = this.onControlPointMouseup.bind(this)
+
+    // 节点树渲染完毕后渲染连接线
     this.mindMap.on('node_tree_render_end', this.renderAllLines)
     // 状态改变后重新渲染连接线
     this.mindMap.on('data_change', this.renderAllLines)
     // 监听画布和节点点击事件，用于清除当前激活的连接线
-    this.mindMap.on('draw_click', () => {
-      if (this.isControlPointMousedown) {
-        return
-      }
-      this.clearActiveLine()
-    })
-    this.mindMap.on('node_click', node => {
-      if (this.isCreatingLine) {
-        this.completeCreateLine(node)
-      } else {
-        this.clearActiveLine()
-      }
-    })
+    this.mindMap.on('draw_click', this.onDrawClick)
+    this.mindMap.on('node_click', this.onNodeClick)
     // 注册删除快捷键
-    this.mindMap.keyCommand.addShortcut(
-      'Del|Backspace',
-      this.removeLine.bind(this)
-    )
+    this.mindMap.keyCommand.addShortcut('Del|Backspace', this.removeLine)
     // 注册添加连接线的命令
-    this.mindMap.command.add('ADD_ASSOCIATIVE_LINE', this.addLine.bind(this))
+    this.mindMap.command.add('ADD_ASSOCIATIVE_LINE', this.addLine)
     // 监听鼠标移动事件
-    this.mindMap.on('mousemove', this.onMousemove.bind(this))
+    this.mindMap.on('mousemove', this.onMousemove)
     // 节点拖拽事件
-    this.mindMap.on('node_dragging', this.onNodeDragging.bind(this))
-    this.mindMap.on('node_dragend', this.onNodeDragend.bind(this))
+    this.mindMap.on('node_dragging', this.onNodeDragging)
+    this.mindMap.on('node_dragend', this.onNodeDragend)
     // 拖拽控制点
-    this.mindMap.on('mouseup', this.onControlPointMouseup.bind(this))
+    this.mindMap.on('mouseup', this.onControlPointMouseup)
     // 缩放事件
     this.mindMap.on('scale', this.onScale)
   }
 
+  // 解绑事件
+  unBindEvent() {
+    this.mindMap.off('node_tree_render_end', this.renderAllLines)
+    this.mindMap.off('data_change', this.renderAllLines)
+    this.mindMap.off('draw_click', this.onDrawClick)
+    this.mindMap.off('node_click', this.onNodeClick)
+    this.mindMap.keyCommand.removeShortcut('Del|Backspace', this.removeLine)
+    this.mindMap.command.remove('ADD_ASSOCIATIVE_LINE', this.addLine)
+    this.mindMap.off('mousemove', this.onMousemove)
+    this.mindMap.off('node_dragging', this.onNodeDragging)
+    this.mindMap.off('node_dragend', this.onNodeDragend)
+    this.mindMap.off('mouseup', this.onControlPointMouseup)
+    this.mindMap.off('scale', this.onScale)
+  }
+
+  // 画布点击事件
+  onDrawClick() {
+    if (this.isControlPointMousedown) {
+      return
+    }
+    this.clearActiveLine()
+  }
+
+  // 节点点击事件
+  onNodeClick(node) {
+    if (this.isCreatingLine) {
+      this.completeCreateLine(node)
+    } else {
+      this.clearActiveLine()
+    }
+  }
+
   // 创建箭头
   createMarker() {
-    return this.draw.marker(20, 20, add => {
+    return this.associativeLineDraw.marker(20, 20, add => {
       add.ref(12, 5)
       add.size(10, 10)
       add.attr('orient', 'auto-start-reverse')
       this.markerPath = add.path('M0,0 L2,5 L0,10 L10,5 Z')
     })
   }
-  
+
   // 判断关联线坐标是否变更，有变更则使用变化后的坐标，无则默认坐标
   updateAllLinesPos(node, toNode, associativeLinePoint) {
     associativeLinePoint = associativeLinePoint || {}
@@ -142,15 +169,15 @@ class AssociativeLine {
       null,
       cur => {
         if (!cur) return
-        let data = cur.nodeData.data
+        let data = cur.getData()
         if (
           data.associativeLineTargets &&
           data.associativeLineTargets.length > 0
         ) {
           nodeToIds.set(cur, data.associativeLineTargets)
         }
-        if (data.id) {
-          idToNode.set(data.id, cur)
+        if (data.uid) {
+          idToNode.set(data.uid, cur)
         }
       },
       () => {},
@@ -158,10 +185,10 @@ class AssociativeLine {
       0
     )
     nodeToIds.forEach((ids, node) => {
-      ids.forEach((id, index) => {
-        let toNode = idToNode.get(id)
+      ids.forEach((uid, index) => {
+        let toNode = idToNode.get(uid)
         if (!node || !toNode) return
-        const associativeLinePoint = (node.nodeData.data.associativeLinePoint ||
+        const associativeLinePoint = (node.getData('associativeLinePoint') ||
           [])[index]
         // 切换结构和布局，都会更新坐标
         const [startPoint, endPoint] = this.updateAllLinesPos(
@@ -194,7 +221,7 @@ class AssociativeLine {
       toNode
     )
     // 虚线
-    let path = this.draw.path()
+    let path = this.associativeLineDraw.path()
     path
       .stroke({
         width: associativeLineWidth,
@@ -205,7 +232,7 @@ class AssociativeLine {
     path.plot(pathStr)
     path.marker('end', this.marker)
     // 不可见的点击线
-    let clickPath = this.draw.path()
+    let clickPath = this.associativeLineDraw.path()
     clickPath
       .stroke({ width: associativeLineActiveWidth, color: 'transparent' })
       .fill({ color: 'none' })
@@ -234,6 +261,11 @@ class AssociativeLine {
         controlPoints
       })
     })
+    // 双击进入关联线文本编辑状态
+    clickPath.dblclick(() => {
+      if (!this.activeLine) return
+      this.showEditTextBox(text)
+    })
     // 渲染关联线文字
     this.renderText(this.getText(node, toNode), path, text)
     this.lineList.push([path, clickPath, text, node, toNode])
@@ -252,28 +284,26 @@ class AssociativeLine {
   }) {
     let { associativeLineActiveColor } = this.mindMap.themeConfig
     // 如果当前存在激活节点，那么取消激活节点
-    if (this.mindMap.renderer.activeNodeList.length > 0) {
-      this.clearActiveNodes()
-    } else {
-      // 否则清除当前的关联线的激活状态，如果有的话
-      this.clearActiveLine()
-      // 保存当前激活的关联线信息
-      this.activeLine = [path, clickPath, text, node, toNode]
-      // 让不可见的点击线显示
-      clickPath.stroke({ color: associativeLineActiveColor })
-      // 如果没有输入过关联线文字，那么显示默认文字
-      if (!this.getText(node, toNode)) {
-        this.renderText(this.mindMap.opt.defaultAssociativeLineText, path, text)
-      }
-      // 渲染控制点和连线
-      this.renderControls(
-        startPoint,
-        endPoint,
-        controlPoints[0],
-        controlPoints[1]
-      )
-      this.mindMap.emit('associative_line_click', path, clickPath, node, toNode)
+    this.mindMap.execCommand('CLEAR_ACTIVE_NODE')
+    // 否则清除当前的关联线的激活状态，如果有的话
+    this.clearActiveLine()
+    // 保存当前激活的关联线信息
+    this.activeLine = [path, clickPath, text, node, toNode]
+    // 让不可见的点击线显示
+    clickPath.stroke({ color: associativeLineActiveColor })
+    // 如果没有输入过关联线文字，那么显示默认文字
+    if (!this.getText(node, toNode)) {
+      this.renderText(this.mindMap.opt.defaultAssociativeLineText, path, text)
     }
+    // 渲染控制点和连线
+    this.renderControls(
+      startPoint,
+      endPoint,
+      controlPoints[0],
+      controlPoints[1]
+    )
+    this.mindMap.emit('associative_line_click', path, clickPath, node, toNode)
+    this.front()
   }
 
   // 移除所有连接线
@@ -298,9 +328,10 @@ class AssociativeLine {
     let { associativeLineWidth, associativeLineColor } =
       this.mindMap.themeConfig
     if (this.isCreatingLine || !fromNode) return
+    this.front()
     this.isCreatingLine = true
     this.creatingStartNode = fromNode
-    this.creatingLine = this.draw.path()
+    this.creatingLine = this.associativeLineDraw.path()
     this.creatingLine
       .stroke({
         width: associativeLineWidth,
@@ -308,6 +339,10 @@ class AssociativeLine {
         dasharray: [6, 4]
       })
       .fill({ color: 'none' })
+    // 箭头
+    this.markerPath
+      .stroke({ color: associativeLineColor })
+      .fill({ color: associativeLineColor })
     this.creatingLine.marker('end', this.marker)
   }
 
@@ -355,14 +390,15 @@ class AssociativeLine {
       height
     }
   }
+
   // 检测当前移动到的目标节点
   checkOverlapNode(x, y) {
     this.overlapNode = null
     bfsWalk(this.mindMap.renderer.root, node => {
-      if (node.nodeData.data.isActive) {
-        this.mindMap.renderer.setNodeActive(node, false)
+      if (node.getData('isActive')) {
+        this.mindMap.execCommand('SET_NODE_ACTIVE', node, false)
       }
-      if (node === this.creatingStartNode || this.overlapNode) {
+      if (node.uid === this.creatingStartNode.uid || this.overlapNode) {
         return
       }
       let { left, top, width, height } = node
@@ -372,44 +408,45 @@ class AssociativeLine {
         this.overlapNode = node
       }
     })
-    if (this.overlapNode && !this.overlapNode.nodeData.data.isActive) {
-      this.mindMap.renderer.setNodeActive(this.overlapNode, true)
+    if (this.overlapNode && !this.overlapNode.getData('isActive')) {
+      this.mindMap.execCommand('SET_NODE_ACTIVE', this.overlapNode, true)
     }
   }
 
   // 完成创建连接线
   completeCreateLine(node) {
-    if (this.creatingStartNode === node) return
+    if (this.creatingStartNode.uid === node.uid) return
     this.addLine(this.creatingStartNode, node)
-    if (this.overlapNode && this.overlapNode.nodeData.data.isActive) {
-      this.mindMap.renderer.setNodeActive(this.overlapNode, false)
+    if (this.overlapNode && this.overlapNode.getData('isActive')) {
+      this.mindMap.execCommand('SET_NODE_ACTIVE', this.overlapNode, false)
     }
     this.isCreatingLine = false
     this.creatingStartNode = null
     this.creatingLine.remove()
     this.creatingLine = null
     this.overlapNode = null
+    this.back()
   }
 
   // 添加连接线
   addLine(fromNode, toNode) {
     if (!fromNode || !toNode) return
     // 目标节点如果没有id，则生成一个id
-    let id = toNode.nodeData.data.id
-    if (!id) {
-      id = uuid()
+    let uid = toNode.getData('uid')
+    if (!uid) {
+      uid = uuid()
       this.mindMap.execCommand('SET_NODE_DATA', toNode, {
-        id
+        uid
       })
     }
     // 将目标节点id保存起来
-    let list = fromNode.nodeData.data.associativeLineTargets || []
+    let list = fromNode.getData('associativeLineTargets') || []
     // 连线节点是否存在相同的id,存在则阻止添加关联线
-    const sameLine = list.some(item => item === id)
+    const sameLine = list.some(item => item === uid)
     if (sameLine) {
       return
     }
-    list.push(id)
+    list.push(uid)
     // 保存控制点
     let [startPoint, endPoint] = computeNodePoints(fromNode, toNode)
     let controlPoints = computeCubicBezierPathPoints(
@@ -418,8 +455,19 @@ class AssociativeLine {
       endPoint.x,
       endPoint.y
     )
+    // 检查是否存在固定位置的配置
+    const { associativeLineInitPointsPosition } = this.mindMap.opt
+    if (associativeLineInitPointsPosition) {
+      const { from, to } = associativeLineInitPointsPosition
+      if (from) {
+        startPoint.dir = from
+      }
+      if (to) {
+        endPoint.dir = to
+      }
+    }
     let offsetList =
-      fromNode.nodeData.data.associativeLineTargetControlOffsets || []
+      fromNode.getData('associativeLineTargetControlOffsets') || []
     // 保存的实际是控制点和端点的差值，否则当节点位置改变了，控制点还是原来的位置，连线就不对了
     offsetList[list.length - 1] = [
       {
@@ -431,9 +479,9 @@ class AssociativeLine {
         y: controlPoints[1].y - endPoint.y
       }
     ]
-    let associativeLinePoint = fromNode.nodeData.data.associativeLinePoint || []
+    let associativeLinePoint = fromNode.getData('associativeLinePoint') || []
     // 记录关联的起始|结束坐标
-    associativeLinePoint[list.length - 1] = [{ startPoint, endPoint }]
+    associativeLinePoint[list.length - 1] = { startPoint, endPoint }
     this.mindMap.execCommand('SET_NODE_DATA', fromNode, {
       associativeLineTargets: list,
       associativeLineTargetControlOffsets: offsetList,
@@ -451,14 +499,14 @@ class AssociativeLine {
       associativeLinePoint,
       associativeLineTargetControlOffsets,
       associativeLineText
-    } = node.nodeData.data
+    } = node.getData()
     associativeLinePoint = associativeLinePoint || []
     let targetIndex = getAssociativeLineTargetIndex(node, toNode)
     // 更新关联线文本数据
     let newAssociativeLineText = {}
     if (associativeLineText) {
       Object.keys(associativeLineText).forEach(item => {
-        if (item !== toNode.nodeData.data.id) {
+        if (item !== toNode.getData('uid')) {
           newAssociativeLineText[item] = associativeLineText[item]
         }
       })
@@ -483,13 +531,6 @@ class AssociativeLine {
     })
   }
 
-  // 清除当前激活的节点
-  clearActiveNodes() {
-    if (this.mindMap.renderer.activeNodeList.length > 0) {
-      this.mindMap.execCommand('CLEAR_ACTIVE_NODE')
-    }
-  }
-
   // 清除激活的线
   clearActiveLine() {
     if (this.activeLine) {
@@ -505,6 +546,7 @@ class AssociativeLine {
       }
       this.activeLine = null
       this.removeControls()
+      this.back()
     }
   }
 
@@ -530,6 +572,29 @@ class AssociativeLine {
     })
     this.showControls()
     this.isNodeDragging = false
+  }
+
+  // 关联线顶层显示
+  front() {
+    if (this.mindMap.opt.associativeLineIsAlwaysAboveNode) return
+    this.associativeLineDraw.front()
+  }
+
+  // 关联线回到原有层级
+  back() {
+    if (this.mindMap.opt.associativeLineIsAlwaysAboveNode) return
+    this.associativeLineDraw.back() // 最底层
+    this.associativeLineDraw.forward() // 连线层上面
+  }
+
+  // 插件被移除前做的事情
+  beforePluginRemove() {
+    this.unBindEvent()
+  }
+
+  // 插件被卸载前做的事情
+  beforePluginDestroy() {
+    this.unBindEvent()
   }
 }
 

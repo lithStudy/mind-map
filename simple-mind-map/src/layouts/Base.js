@@ -13,9 +13,12 @@ class Base {
     this.mindMap = renderer.mindMap
     // 绘图对象
     this.draw = this.mindMap.draw
+    this.lineDraw = this.mindMap.lineDraw
     // 根节点
     this.root = null
     this.lru = new Lru(this.mindMap.opt.maxNodeCacheCount)
+    // 当initRootNodePosition不为默认的值时，根节点的位置距默认的配置时根节点距离的差值
+    this.rootNodeCenterOffset = null
   }
 
   //  计算节点位置
@@ -40,7 +43,7 @@ class Base {
   cacheNode(uid, node) {
     // 记录本次渲染时的节点
     this.renderer.nodeCache[uid] = node
-    // 记录所有渲染时的节点
+    // 缓存所有渲染过的节点
     this.lru.add(uid, node)
   }
 
@@ -69,11 +72,12 @@ class Base {
   //  创建节点实例
   createNode(data, parent, isRoot, layerIndex) {
     // 创建节点
+    const uid = data.data.uid
     let newNode = null
     // 数据上保存了节点引用，那么直接复用节点
     if (data && data._node && !this.renderer.reRender) {
       newNode = data._node
-      let isLayerTypeChange = this.checkIsLayerTypeChange(
+      const isLayerTypeChange = this.checkIsLayerTypeChange(
         newNode.layerIndex,
         layerIndex
       )
@@ -81,53 +85,75 @@ class Base {
       newNode.layerIndex = layerIndex
       this.cacheNode(data._node.uid, newNode)
       this.checkIsLayoutChangeRerenderExpandBtnPlaceholderRect(newNode)
-      // 主题或主题配置改变了需要重新计算节点大小和布局
-      if (this.checkIsNeedResizeSources() || isLayerTypeChange) {
+      // 主题或主题配置改变了、节点层级改变了，需要重新渲染节点文本等情况需要重新计算节点大小和布局
+      if (
+        this.checkIsNeedResizeSources() ||
+        isLayerTypeChange ||
+        newNode.getData('resetRichText')
+      ) {
         newNode.getSize()
         newNode.needLayout = true
       }
-    } else if (this.lru.has(data.data.uid) && !this.renderer.reRender) {
-      // 数据上没有保存节点引用，但是通过uid找到了缓存的节点，也可以复用
-      newNode = this.lru.get(data.data.uid)
+    } else if (
+      (this.lru.has(uid) || this.renderer.lastNodeCache[uid]) &&
+      !this.renderer.reRender
+    ) {
+      // 节点数据上没有节点实例
+      // 但是通过uid在节点缓存池中找到了缓存的节点
+      // 或者在上一次渲染缓存对象中找到了节点
+      // 也可以直接复用
+      newNode = this.lru.get(uid) || this.renderer.lastNodeCache[uid]
       // 保存该节点上一次的数据
-      let lastData = JSON.stringify(newNode.nodeData.data)
-      let isLayerTypeChange = this.checkIsLayerTypeChange(
+      const lastData = JSON.stringify(newNode.getData())
+      const isLayerTypeChange = this.checkIsLayerTypeChange(
         newNode.layerIndex,
         layerIndex
       )
       newNode.reset()
       newNode.nodeData = newNode.handleData(data || {})
       newNode.layerIndex = layerIndex
-      this.cacheNode(data.data.uid, newNode)
+      this.cacheNode(uid, newNode)
       this.checkIsLayoutChangeRerenderExpandBtnPlaceholderRect(newNode)
       data._node = newNode
       // 主题或主题配置改变了需要重新计算节点大小和布局
-      let isResizeSource = this.checkIsNeedResizeSources()
-      // 节点数据改变了需要重新计算节点大小和布局
-      let isNodeDataChange = lastData !== JSON.stringify(data.data)
-      if (isResizeSource || isNodeDataChange || isLayerTypeChange) {
+      const isResizeSource = this.checkIsNeedResizeSources()
+      // 主题或主题配置改变了、节点层级改变了，需要重新渲染节点文本，节点数据改变了等情况需要重新计算节点大小和布局
+      const isNodeDataChange = lastData !== JSON.stringify(data.data)
+      if (
+        isResizeSource ||
+        isNodeDataChange ||
+        isLayerTypeChange ||
+        newNode.getData('resetRichText')
+      ) {
         newNode.getSize()
         newNode.needLayout = true
       }
     } else {
       // 创建新节点
-      let uid = data.data.uid || createUid()
+      const newUid = uid || createUid()
       newNode = new Node({
         data,
-        uid,
+        uid: newUid,
         renderer: this.renderer,
         mindMap: this.mindMap,
         draw: this.draw,
         layerIndex
       })
       // uid保存到数据上，为了节点复用
-      data.data.uid = uid
-      this.cacheNode(uid, newNode)
+      data.data.uid = newUid
+      this.cacheNode(newUid, newNode)
       // 数据关联实际节点
       data._node = newNode
-      if (data.data.isActive) {
-        this.renderer.addActiveNode(newNode)
-      }
+    }
+    // 如果该节点数据是已激活状态，那么添加到激活节点列表里
+    if (data.data.isActive) {
+      this.renderer.addNodeToActiveList(newNode)
+    }
+    // 如果当前节点在激活节点列表里，那么添加上激活的状态
+    if (this.mindMap.renderer.findActiveNodeIndex(newNode) !== -1) {
+      newNode.setData({
+        isActive: true
+      })
     }
     // 根节点
     if (isRoot) {
@@ -154,17 +180,21 @@ class Base {
     }
   }
 
-  //  定位节点到画布中间
-  setNodeCenter(node) {
-    let { initRootNodePosition } = this.mindMap.opt
-    let { CENTER } = CONSTANTS.INIT_ROOT_NODE_POSITION
-    if (
-      !initRootNodePosition ||
-      !Array.isArray(initRootNodePosition) ||
-      initRootNodePosition.length < 2
-    ) {
-      initRootNodePosition = [CENTER, CENTER]
+  // 规范initRootNodePosition配置
+  formatInitRootNodePosition(pos) {
+    const { CENTER } = CONSTANTS.INIT_ROOT_NODE_POSITION
+    if (!pos || !Array.isArray(pos) || pos.length < 2) {
+      pos = [CENTER, CENTER]
     }
+    return pos
+  }
+
+  //  定位节点到画布中间
+  setNodeCenter(node, position) {
+    let { initRootNodePosition } = this.mindMap.opt
+    initRootNodePosition = this.formatInitRootNodePosition(
+      position || initRootNodePosition
+    )
     node.left = this.formatPosition(
       initRootNodePosition[0],
       this.mindMap.width,
@@ -175,6 +205,42 @@ class Base {
       this.mindMap.height,
       node.height
     )
+  }
+
+  // 当initRootNodePosition配置不为默认的['center','center']时，计算当前配置和默认配置情况下，根节点位置的差值
+  getRootCenterOffset(width, height) {
+    // 因为根节点的大小不会影响这个差值，所以计算一次就足够了
+    if (this.rootNodeCenterOffset) return this.rootNodeCenterOffset
+    let { initRootNodePosition } = this.mindMap.opt
+    const { CENTER } = CONSTANTS.INIT_ROOT_NODE_POSITION
+    initRootNodePosition = this.formatInitRootNodePosition(initRootNodePosition)
+    if (
+      initRootNodePosition[0] === CENTER &&
+      initRootNodePosition[1] === CENTER
+    ) {
+      // 如果initRootNodePosition是默认的，那么不需要计算
+      this.rootNodeCenterOffset = {
+        x: 0,
+        y: 0
+      }
+    } else {
+      // 否则需要计算当前配置和默认配置的差值
+      const tmpNode = {
+        width: width,
+        height: height
+      }
+      const tmpNode2 = {
+        width: width,
+        height: height
+      }
+      this.setNodeCenter(tmpNode, [CENTER, CENTER])
+      this.setNodeCenter(tmpNode2)
+      this.rootNodeCenterOffset = {
+        x: tmpNode2.left - tmpNode.left,
+        y: tmpNode2.top - tmpNode.top
+      }
+    }
+    return this.rootNodeCenterOffset
   }
 
   //  更新子节点属性
@@ -202,9 +268,13 @@ class Base {
   }
 
   //  递归计算节点的宽度
-  getNodeAreaWidth(node) {
+  getNodeAreaWidth(node, withGeneralization = false) {
     let widthArr = []
+    let totalGeneralizationNodeWidth = 0
     let loop = (node, width) => {
+      if (withGeneralization && node.checkHasGeneralization()) {
+        totalGeneralizationNodeWidth += node._generalizationNodeWidth
+      }
       if (node.children.length) {
         width += node.width / 2
         node.children.forEach(item => {
@@ -216,7 +286,7 @@ class Base {
       }
     }
     loop(node, 0)
-    return Math.max(...widthArr)
+    return Math.max(...widthArr) + totalGeneralizationNodeWidth
   }
 
   //  二次贝塞尔曲线
@@ -233,6 +303,65 @@ class Base {
     let cx2 = cx1
     let cy2 = y2
     return `M ${x1},${y1} C ${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`
+  }
+
+  // 根据a,b两个点的位置，计算去除圆角大小后的新的b点
+  computeNewPoint(a, b, radius = 0) {
+    // x坐标相同
+    if (a[0] === b[0]) {
+      // b在a下方
+      if (b[1] > a[1]) {
+        return [b[0], b[1] - radius]
+      } else {
+        // b在a上方
+        return [b[0], b[1] + radius]
+      }
+    } else if (a[1] === b[1]) {
+      // y坐标相同
+      // b在a右边
+      if (b[0] > a[0]) {
+        return [b[0] - radius, b[1]]
+      } else {
+        return [b[0] + radius, b[1]]
+      }
+    }
+  }
+
+  // 创建一段折线路径
+  // 最后一个拐角支持圆角
+  createFoldLine(list) {
+    const { lineRadius } = this.mindMap.themeConfig
+    const len = list.length
+    let path = ''
+    let radiusPath = ''
+    if (len >= 3 && lineRadius > 0) {
+      const start = list[len - 3]
+      const center = list[len - 2]
+      const end = list[len - 1]
+      // 如果三点在一条直线，那么不用处理
+      const isOneLine =
+        (start[0] === center[0] && center[0] === end[0]) ||
+        (start[1] === center[1] && center[1] === end[1])
+      if (!isOneLine) {
+        const cStart = this.computeNewPoint(start, center, lineRadius)
+        const cEnd = this.computeNewPoint(end, center, lineRadius)
+        radiusPath = `Q ${center[0]},${center[1]} ${cEnd[0]},${cEnd[1]}`
+        list.splice(len - 2, 1, cStart, radiusPath)
+      }
+    }
+    list.forEach((item, index) => {
+      if (typeof item === 'string') {
+        path += item
+      } else {
+        const [x, y] = item
+        if (index === 0) {
+          path += `M ${x},${y}`
+        } else {
+          path += `L ${x},${y}`
+        }
+      }
+    })
+    return path
   }
 
   //   获取节点的marginX
@@ -289,12 +418,12 @@ class Base {
           let { left, right, top, bottom } = walk(child)
           // 概要内容的宽度
           let generalizationWidth =
-            child.checkHasGeneralization() && child.nodeData.data.expand
+            child.checkHasGeneralization() && child.getData('expand')
               ? child._generalizationNodeWidth + generalizationNodeMargin
               : 0
           // 概要内容的高度
           let generalizationHeight =
-            child.checkHasGeneralization() && child.nodeData.data.expand
+            child.checkHasGeneralization() && child.getData('expand')
               ? child._generalizationNodeHeight + generalizationNodeMargin
               : 0
           if (left - (dir === 'h' ? generalizationWidth : 0) < _left) {
@@ -335,9 +464,69 @@ class Base {
     }
   }
 
+  // 获取指定索引区间的子节点的边界范围
+  getChildrenBoundaries(node, dir, startIndex = 0, endIndex) {
+    let { generalizationLineMargin, generalizationNodeMargin } =
+      this.mindMap.themeConfig
+    const children = node.children.slice(startIndex, endIndex + 1)
+    let left = Infinity
+    let right = -Infinity
+    let top = Infinity
+    let bottom = -Infinity
+    children.forEach(item => {
+      const cur = this.getNodeBoundaries(item, dir)
+      left = cur.left < left ? cur.left : left
+      right = cur.right > right ? cur.right : right
+      top = cur.top < top ? cur.top : top
+      bottom = cur.bottom > bottom ? cur.bottom : bottom
+    })
+    return {
+      left,
+      right,
+      top,
+      bottom,
+      generalizationLineMargin,
+      generalizationNodeMargin
+    }
+  }
+
+  // 获取节点概要的渲染边界
+  getNodeGeneralizationRenderBoundaries(item, dir) {
+    let res = null
+    // 区间
+    if (item.range) {
+      res = this.getChildrenBoundaries(
+        item.node,
+        dir,
+        item.range[0],
+        item.range[1]
+      )
+    } else {
+      // 整体概要
+      res = this.getNodeBoundaries(item.node, dir)
+    }
+    return res
+  }
+
   // 获取节点实际存在几个子节点
   getNodeActChildrenLength(node) {
     return node.nodeData.children && node.nodeData.children.length
+  }
+
+  // 设置连线样式
+  setLineStyle(style, line, path, childNode) {
+    line.plot(this.transformPath(path))
+    style && style(line, childNode, true)
+  }
+
+  // 转换路径，可以转换成特殊风格的线条样式
+  transformPath(path) {
+    const { customTransformNodeLinePath } = this.mindMap.opt
+    if (customTransformNodeLinePath) {
+      return customTransformNodeLinePath(path)
+    } else {
+      return path
+    }
   }
 }
 

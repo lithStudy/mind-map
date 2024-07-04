@@ -1,5 +1,5 @@
 import Base from './Base'
-import { walk, asyncRun } from '../utils'
+import { walk, asyncRun, getNodeIndexInNodeList } from '../utils'
 import { CONSTANTS } from '../constants/constant'
 
 //  时间轴
@@ -80,11 +80,7 @@ class Timeline extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex, index) => {
-        if (
-          node.nodeData.data.expand &&
-          node.children &&
-          node.children.length
-        ) {
+        if (node.getData('expand') && node.children && node.children.length) {
           let marginX = this.getMarginX(layerIndex + 1)
           let marginY = this.getMarginY(layerIndex + 1)
           if (isRoot) {
@@ -122,7 +118,7 @@ class Timeline extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (!node.nodeData.data.expand) {
+        if (!node.getData('expand')) {
           return
         }
         // 调整left
@@ -208,9 +204,7 @@ class Timeline extends Base {
   updateBrothersTop(node, addHeight) {
     if (node.parent && !node.parent.isRoot) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition()) {
           // 适配自定义位置
@@ -251,8 +245,7 @@ class Timeline extends Base {
         let x2 = item.left
         let y = node.top + node.height / 2
         let path = `M ${x1},${y} L ${x2},${y}`
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
         prevBother = item
       })
     } else {
@@ -270,21 +263,24 @@ class Timeline extends Base {
         }
         // 水平线
         let path = `M ${x},${y} L ${item.left},${y}`
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
       })
       // 竖线
       if (len > 0) {
-        let line = this.draw.path()
+        let line = this.lineDraw.path()
         expandBtnSize = len > 0 ? expandBtnSize : 0
         if (
           node.parent &&
           node.parent.isRoot &&
           node.dir === CONSTANTS.LAYOUT_GROW_DIR.TOP
         ) {
-          line.plot(`M ${x},${top} L ${x},${miny}`)
+          line.plot(this.transformPath(`M ${x},${top} L ${x},${miny}`))
         } else {
-          line.plot(`M ${x},${top + height + expandBtnSize} L ${x},${maxy}`)
+          line.plot(
+            this.transformPath(
+              `M ${x},${top + height + expandBtnSize} L ${x},${maxy}`
+            )
+          )
         }
         node.style.line(line)
         node._lines.push(line)
@@ -317,24 +313,27 @@ class Timeline extends Base {
   }
 
   //  创建概要节点
-  renderGeneralization(node, gLine, gNode) {
-    let {
-      top,
-      bottom,
-      right,
-      generalizationLineMargin,
-      generalizationNodeMargin
-    } = this.getNodeBoundaries(node, 'h')
-    let x1 = right + generalizationLineMargin
-    let y1 = top
-    let x2 = right + generalizationLineMargin
-    let y2 = bottom
-    let cx = x1 + 20
-    let cy = y1 + (y2 - y1) / 2
-    let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
-    gLine.plot(path)
-    gNode.left = right + generalizationNodeMargin
-    gNode.top = top + (bottom - top - gNode.height) / 2
+  renderGeneralization(list) {
+    list.forEach(item => {
+      let {
+        top,
+        bottom,
+        right,
+        generalizationLineMargin,
+        generalizationNodeMargin
+      } = this.getNodeGeneralizationRenderBoundaries(item, 'h')
+      let x1 = right + generalizationLineMargin
+      let y1 = top
+      let x2 = right + generalizationLineMargin
+      let y2 = bottom
+      let cx = x1 + 20
+      let cy = y1 + (y2 - y1) / 2
+      let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
+      item.generalizationLine.plot(this.transformPath(path))
+      item.generalizationNode.left = right + generalizationNodeMargin
+      item.generalizationNode.top =
+        top + (bottom - top - item.generalizationNode.height) / 2
+    })
   }
 
   // 渲染展开收起按钮的隐藏占位元素

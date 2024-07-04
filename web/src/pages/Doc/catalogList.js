@@ -11,13 +11,14 @@ let langList = [
   }
 ]
 let StartList = ['introduction', 'start', 'deploy', 'client', 'translate', 'changelog']
-let CourseList = new Array(24).fill(0).map((_, index) => {
+let CourseList = new Array(29).fill(0).map((_, index) => {
   return 'course' + (index + 1)
 })
 let APIList = [
   'constructor',
   'node',
   'render',
+  'textEdit',
   'view',
   'keyCommand',
   'command',
@@ -35,11 +36,18 @@ let APIList = [
   'search',
   'painter',
   'scrollbar',
+  'formula',
+  'cooperate',
+  'rainbowLines',
+  'handDrawnLikeStyle',
+  'demonstrate',
+  'notation',
+  'outerFrame',
   'xmind',
   'markdown',
   'utils'
 ]
-let helpList = new Array(3).fill(0).map((_, index) => {
+let helpList = new Array(6).fill(0).map((_, index) => {
   return 'help' + (index + 1)
 })
 

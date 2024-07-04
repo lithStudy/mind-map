@@ -1,9 +1,15 @@
 <template>
-  <Sidebar ref="sidebar" title="图标/贴纸">
+  <Sidebar ref="sidebar" :title="$t('nodeIconSidebar.title')">
     <div class="box" :class="{ isDark: isDark }">
       <el-tabs v-model="activeName">
-        <el-tab-pane label="图标" name="icon"></el-tab-pane>
-        <el-tab-pane label="贴纸" name="image"></el-tab-pane>
+        <el-tab-pane
+          :label="$t('nodeIconSidebar.icon')"
+          name="icon"
+        ></el-tab-pane>
+        <el-tab-pane
+          :label="$t('nodeIconSidebar.sticker')"
+          name="image"
+        ></el-tab-pane>
       </el-tabs>
       <div class="boxContent">
         <!-- 图标 -->
@@ -52,6 +58,7 @@
 import Sidebar from './Sidebar'
 import { mapState } from 'vuex'
 import { nodeIconList } from 'simple-mind-map/src/svg/icons'
+import { mergerIconList } from 'simple-mind-map/src/utils/index'
 import icon from '@/config/icon'
 import image from '@/config/image'
 
@@ -63,7 +70,7 @@ export default {
   data() {
     return {
       activeName: 'icon',
-      nodeIconList: [...nodeIconList, ...icon],
+      nodeIconList: mergerIconList([...nodeIconList, ...icon]),
       nodeImageList: [...image],
       iconList: [],
       nodeImage: '',
@@ -71,7 +78,10 @@ export default {
     }
   },
   computed: {
-    ...mapState(['activeSidebar', 'isDark'])
+    ...mapState({
+      activeSidebar: state => state.activeSidebar,
+      isDark: state => state.localConfig.isDark
+    })
   },
   watch: {
     activeSidebar(val) {
@@ -94,9 +104,14 @@ export default {
     handleNodeActive(...args) {
       this.activeNodes = [...args[1]]
       if (this.activeNodes.length > 0) {
-        let firstNode = this.activeNodes[0]
-        this.nodeImage = firstNode.getData('image')
-        this.iconList = firstNode.getData('icon') || [] // 回显图标
+        if (this.activeNodes.length === 1) {
+          let firstNode = this.activeNodes[0]
+          this.nodeImage = firstNode.getData('image') || ''
+          this.iconList = firstNode.getData('icon') || [] // 回显图标
+        } else {
+          this.nodeImage = []
+          this.iconList = []
+        }
       } else {
         this.iconList = []
         this.nodeImage = ''
@@ -114,27 +129,31 @@ export default {
 
     // 设置icon
     setIcon(type, name) {
-      let key = type + '_' + name
-      let index = this.iconList.findIndex(item => {
-        return item === key
-      })
-      // 删除icon
-      if (index !== -1) {
-        this.iconList.splice(index, 1)
-      } else {
-        let typeIndex = this.iconList.findIndex(item => {
-          return item.split('_')[0] === type
-        })
-        // 替换icon
-        if (typeIndex !== -1) {
-          this.iconList.splice(typeIndex, 1, key)
-        } else {
-          // 增加icon
-          this.iconList.push(key)
-        }
-      }
       this.activeNodes.forEach(node => {
-        node.setIcon([...this.iconList])
+        const iconList = [...(node.getData('icon') || [])]
+        let key = type + '_' + name
+        let index = iconList.findIndex(item => {
+          return item === key
+        })
+        // 删除icon
+        if (index !== -1) {
+          iconList.splice(index, 1)
+        } else {
+          let typeIndex = iconList.findIndex(item => {
+            return item.split('_')[0] === type
+          })
+          // 替换icon
+          if (typeIndex !== -1) {
+            iconList.splice(typeIndex, 1, key)
+          } else {
+            // 增加icon
+            iconList.push(key)
+          }
+        }
+        node.setIcon(iconList)
+        if (this.activeNodes.length === 1) {
+          this.iconList = iconList
+        }
       })
     },
 

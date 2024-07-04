@@ -31,6 +31,103 @@
 </blockquote>
 <p>Whether the node is currently being dragged</p>
 <h2>Methods</h2>
+<h3>deactivate()</h3>
+<blockquote>
+<p>0.9.11+</p>
+</blockquote>
+<p>Deactivate the node.</p>
+<h3>getAncestorNodes()</h3>
+<blockquote>
+<p>v0.9.9+</p>
+</blockquote>
+<p>Obtain a list of ancestor node instances.</p>
+<h3>highlight()</h3>
+<blockquote>
+<p>v0.9.8+</p>
+</blockquote>
+<p>Highlight node.</p>
+<h3>closeHighlight()</h3>
+<blockquote>
+<p>v0.9.8+</p>
+</blockquote>
+<p>Unhighlight node.</p>
+<h3>getPureData(removeActiveState = true, removeId = false)</h3>
+<blockquote>
+<p>v0.9.0+</p>
+</blockquote>
+<ul>
+<li>
+<p><code>removeActiveState</code>：Is remove the activation status of the node</p>
+</li>
+<li>
+<p><code>removeId</code>：Is remove the uid of the node</p>
+</li>
+</ul>
+<p>Serialize a node to obtain its pure data, excluding references to node instances.</p>
+<h3>setGeneralizationOpacity(val)</h3>
+<blockquote>
+<p>v0.9.0+</p>
+</blockquote>
+<ul>
+<li><code>val</code>：Number, 0-1，Opacity</li>
+</ul>
+<p>Set the transparency of summary nodes and curves.</p>
+<h3>formatGetGeneralization()</h3>
+<blockquote>
+<p>v0.9.0+</p>
+</blockquote>
+<p>Obtain node summary data.</p>
+<h3>getIndexInBrothers()</h3>
+<blockquote>
+<p>v0.9.0+</p>
+</blockquote>
+<p>Gets the index of the node in the sibling node list.</p>
+<h3>getRectInSvg()</h3>
+<blockquote>
+<p>v0.9.0+</p>
+</blockquote>
+<p>Obtain the size and position information of the node. The width and height are the actual width and height after applying the scaling effect, and the position information is relative to the canvas.</p>
+<h3>getRect()</h3>
+<blockquote>
+<p>v0.8.1+</p>
+</blockquote>
+<p>Obtain the size and position information of the node. The width and height are the actual width and height after applying the scaling effect, and the position is relative to the upper left corner of the browser window.</p>
+<h3>ancestorHasGeneralization()</h3>
+<blockquote>
+<p>v0.8.1+</p>
+</blockquote>
+<p>Check if there are ancestor nodes with a summary.</p>
+<h3>getNoteContentPosition()</h3>
+<blockquote>
+<p>v0.8.1+</p>
+</blockquote>
+<p>Obtain the display position of node comments. When a node has comments and is displaying a state, dragging or zooming will cause the comment floating layer to detach from the node. This method can be used to obtain a new position and update the comment floating layer.</p>
+<h3>updateNodeByActive(active)</h3>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<ul>
+<li><code>active</code>：Boolean, active status.</li>
+</ul>
+<p>Update nodes based on whether they are activated or not. The main task is to update the display and hiding of the expand and collapse buttons for nodes.</p>
+<h3>setOpacity(val)</h3>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>val</code>: Opacity value，0-1</li>
+</ul>
+<p>Set node transparency, including connecting lines and child nodes.</p>
+<h3>hideChildren()</h3>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<p>Hide subordinate nodes.</p>
+<h3>showChildren()</h3>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<p>Display subordinate nodes.</p>
 <h3>hasCustomStyle()</h3>
 <blockquote>
 <p>v0.6.2+</p>
@@ -84,11 +181,11 @@ default <code>false</code></p>
 if <code>key</code> is not passed, return the <code>data</code> object</p>
 <h3>setData(data)</h3>
 <p>Set the value of the specified key in the data object of the node's real data
-nodeData, <code>SET_NODE_DATA</code> command's shortcut method</p>
-<h3>setText(text, richText)</h3>
+nodeData, <code>SET_NODE_DATA</code> command's shortcut method. This method and command will not update the view, so if you want to modify the text, use the 'setText' method or use the command pointing to the text.</p>
+<h3>setText(text, richText, resetRichText)</h3>
 <ul>
 <li>
-<p><code>richText</code>: v0.4.2+，<code>Boolean</code>, If you want to set rich text content, that is, <code>html</code> character, <code>richText</code> needs to be passed <code>true</code></p>
+<p><code>richText</code>: v0.4.2+，<code>Boolean</code>, If you want to set rich text content, that is, <code>html</code> character, <code>richText</code> needs to be passed <code>true</code>. After version 0.9.3+, if this parameter is not passed, it will use previous value.</p>
 </li>
 <li>
 <p><code>resetRichText</code>: v0.6.10+, <code>Boolean</code>, whether to reset rich text, The default is 'false'. If 'true' is passed, the style of the rich text node will be reset</p>
@@ -103,8 +200,21 @@ nodeData, <code>SET_NODE_DATA</code> command's shortcut method</p>
 <p>Setting the node hyperlink, a shortcut for the <code>SET_NODE_HYPERLINK</code> command</p>
 <h3>setNote(note)</h3>
 <p>Setting the node note, a shortcut for the <code>SET_NODE_NOTE</code> command</p>
+<h3>setAttachment(url, name)</h3>
+<blockquote>
+<p>v0.9.10+</p>
+</blockquote>
+<ul>
+<li>
+<p><code>url</code>：Attachment url；</p>
+</li>
+<li>
+<p><code>name</code>：Attachment name, optional</p>
+</li>
+</ul>
+<p>Set node attachments, a shortcut for the <code>SET_NODE_ATTACHMENT</code> command</p>
 <h3>setTag(tag)</h3>
-<p>Setting the node tag, a shortcut for the <code>SET_NODE_TAG</code> command&quot;</p>
+<p>Setting the node tag, a shortcut for the <code>SET_NODE_TAG</code> command</p>
 <h3>hide()</h3>
 <blockquote>
 <p>v0.1.5+</p>
@@ -117,9 +227,16 @@ nodeData, <code>SET_NODE_DATA</code> command's shortcut method</p>
 <p>Show node and its sub-nodes</p>
 <h3>isParent(node)</h3>
 <blockquote>
-<p>v0.1.5+</p>
+<p>v0.1.5+：Detect whether the current node is an ancestor node of a certain node</p>
 </blockquote>
-<p>Check if the current node is an ancestor of a certain node</p>
+<blockquote>
+<p>v0.8.1+：Detect whether the current node is the parent node of a certain node</p>
+</blockquote>
+<h3>isAncestor(node)</h3>
+<blockquote>
+<p>v0.8.1+</p>
+</blockquote>
+<p>Detect whether the current node is an ancestor node of a certain node</p>
 <h3>isBrother(node)</h3>
 <blockquote>
 <p>v0.1.5+</p>
@@ -130,6 +247,11 @@ nodeData, <code>SET_NODE_DATA</code> command's shortcut method</p>
 <p>v0.2.0+</p>
 </blockquote>
 <p>Check if there is a summary</p>
+<h3>checkHasSelfGeneralization()</h3>
+<blockquote>
+<p>v0.9.0+</p>
+</blockquote>
+<p>Check if there is a summary of oneself, not a sub node interval summary</p>
 <h3>hideGeneralization()</h3>
 <blockquote>
 <p>v0.2.0+</p>

@@ -4,9 +4,6 @@
 <blockquote>
 <p>v0.4.0+</p>
 </blockquote>
-<blockquote>
-<p>注意：这是一个测试性质和不完善的功能</p>
-</blockquote>
 <p>该插件提供节点富文本编辑的能力，注册了即可生效。</p>
 <p>默认节点编辑只能对节点内所有文本统一应用样式，通过该插件可以支持富文本编辑的效果，目前支持：加粗、斜体、下划线、删除线、字体、字号、颜色、背景颜色。不支持上划线、行高。</p>
 <p>该插件的原理是使用<a href="https://github.com/quilljs/quill">Quill</a>编辑器实现富文本编辑，然后把编辑后生成的<code>DOM</code>节点直接作为节点的文本数据，并且在渲染的时候通过<code>svg</code>的<code>foreignObject</code>标签嵌入<code>DOM</code>节点。</p>
@@ -21,6 +18,7 @@
 <blockquote>
 <p>dom-to-image-more兼容性比较差，在很多浏览器上导出图片都是空的，所以可以根据你自己的需求替换成html2canvas。</p>
 </blockquote>
+<p>从<code>0.6.16+</code>版本后不再使用<code>dom-to-image-more</code>、<code>html2canvas</code>之类的第三方库实现导出，兼容性及导出都不再有问题。</p>
 <h2>注册</h2>
 <pre class="hljs"><code><span class="hljs-keyword">import</span> MindMap <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;simple-mind-map&#x27;</span>
 <span class="hljs-keyword">import</span> RichText <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;simple-mind-map/src/plugins/RichText.js&#x27;</span>
@@ -58,6 +56,14 @@ MindMap.usePlugin(RichText, opt?)
 <pre class="hljs"><code>[<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, ..<span class="hljs-number">.100</span>]
 </code></pre>
 <h2>方法</h2>
+<h3>setNotActiveNodeStyle(node, style)</h3>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<ul>
+<li><code>style</code>：Object，样式对象。</li>
+</ul>
+<p>给未激活的节点设置富文本样式。</p>
 <h3>selectAll()</h3>
 <p>选中全部。当节点正在编辑中可以通过该方法选中节点内的所有文本。</p>
 <h3>focus()</h3>
@@ -65,7 +71,7 @@ MindMap.usePlugin(RichText, opt?)
 <p>v0.4.7+</p>
 </blockquote>
 <p>聚焦。</p>
-<h3>formatText(config = {})</h3>
+<h3>formatText(config = {}, clear = false, pure = false)</h3>
 <ul>
 <li><code>config</code>：对象，键为样式属性，值为样式值，完整的配置如下：</li>
 </ul>
@@ -79,7 +85,15 @@ MindMap.usePlugin(RichText, opt?)
     <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;#333&#x27;</span> <span class="hljs-comment">// 颜色</span>
 }
 </code></pre>
-<p>格式化当前选中的文本。</p>
+<ul>
+<li>
+<p><code>clear</code>：是否是清除样式</p>
+</li>
+<li>
+<p><code>pure</code>：v0.9.4+，如果设为true，那么仅会格式化文本样式，不会同步到节点的数据中</p>
+</li>
+</ul>
+<p>格式化当前选中的文本。会将样式设置同步到节点的数据中。</p>
 <h3>formatRangeText(range, config = {})</h3>
 <ul>
 <li><code>range</code>：<code>Quill</code>的范围对象，格式如下：</li>

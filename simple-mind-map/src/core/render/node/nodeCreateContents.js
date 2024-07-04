@@ -3,22 +3,34 @@ import {
   resizeImgSize,
   removeHtmlStyle,
   addHtmlStyle,
-  checkIsRichText
+  checkIsRichText,
+  isUndef,
+  createForeignObjectNode,
+  addXmlns
 } from '../../../utils'
-import { Image, SVG, A, G, Rect, Text, ForeignObject } from '@svgdotjs/svg.js'
+import { Image as SVGImage, SVG, A, G, Rect, Text } from '@svgdotjs/svg.js'
 import iconsSvg from '../../../svg/icons'
-import { CONSTANTS, commonCaches } from '../../../constants/constant'
+import { CONSTANTS } from '../../../constants/constant'
 
 //  创建图片节点
 function createImgNode() {
-  let img = this.nodeData.data.image
+  const img = this.getData('image')
   if (!img) {
     return
   }
-  let imgSize = this.getImgShowSize()
-  let node = new Image().load(img).size(...imgSize)
-  if (this.nodeData.data.imageTitle) {
-    node.attr('title', this.nodeData.data.imageTitle)
+  const imgSize = this.getImgShowSize()
+  const node = new SVGImage().load(img).size(...imgSize)
+  // 如果指定了加载失败显示的图片，那么加载一下图片检测是否失败
+  const { defaultNodeImage } = this.mindMap.opt
+  if (defaultNodeImage) {
+    const imgEl = new Image()
+    imgEl.onerror = () => {
+      node.load(defaultNodeImage)
+    }
+    imgEl.src = img
+  }
+  if (this.getData('imageTitle')) {
+    node.attr('title', this.getData('imageTitle'))
   }
   node.on('dblclick', e => {
     this.mindMap.emit('node_img_dblclick', this, e)
@@ -41,7 +53,7 @@ function createImgNode() {
 
 //  获取图片显示宽高
 function getImgShowSize() {
-  const { custom, width, height } = this.nodeData.data.imageSize
+  const { custom, width, height } = this.getData('imageSize')
   // 如果是自定义了图片的宽高，那么不受最大宽高限制
   if (custom) return [width, height]
   return resizeImgSize(
@@ -54,7 +66,7 @@ function getImgShowSize() {
 
 //  创建icon节点
 function createIconNode() {
-  let _data = this.nodeData.data
+  let _data = this.getData()
   if (!_data.icon || _data.icon.length <= 0) {
     return []
   }
@@ -70,11 +82,17 @@ function createIconNode() {
       node = SVG(src)
     } else {
       // 图片图标
-      node = new Image().load(src)
+      node = new SVGImage().load(src)
     }
     node.size(iconSize, iconSize)
     node.on('click', e => {
-      this.mindMap.emit('node_icon_click', this, item, e)
+      this.mindMap.emit('node_icon_click', this, item, e, node)
+    })
+    node.on('mouseenter', e => {
+      this.mindMap.emit('node_icon_mouseenter', this, item, e, node)
+    })
+    node.on('mouseleave', e => {
+      this.mindMap.emit('node_icon_mouseleave', this, item, e, node)
     })
     return {
       node,
@@ -90,7 +108,7 @@ function createRichTextNode() {
   let g = new G()
   // 重新设置富文本节点内容
   let recoverText = false
-  if (this.nodeData.data.resetRichText) {
+  if (this.getData('resetRichText')) {
     delete this.nodeData.data.resetRichText
     recoverText = true
   }
@@ -100,8 +118,8 @@ function createRichTextNode() {
       recoverText = true
     }
   }
-  if (recoverText) {
-    let text = this.nodeData.data.text
+  let text = this.getData('text')
+  if (recoverText && !isUndef(text)) {
     // 判断节点内容是否是富文本
     let isRichText = checkIsRichText(text)
     // 样式字符串
@@ -110,25 +128,37 @@ function createRichTextNode() {
       // 如果是富文本那么线移除内联样式
       text = removeHtmlStyle(text)
       // 再添加新的内联样式
+      let _text = text
       text = addHtmlStyle(text, 'span', style)
+      // 给span添加样式没有成功，则尝试给strong标签添加样式
+      if (text === _text) {
+        text = addHtmlStyle(text, 'strong', style)
+      }
     } else {
       // 非富文本
       text = `<p><span style="${style}">${text}</span></p>`
     }
-    this.nodeData.data.text = text
+    this.setData({
+      text: text
+    })
   }
-  let html = `<div>${this.nodeData.data.text}</div>`
-  if (!commonCaches.measureRichtextNodeTextSizeEl) {
-    commonCaches.measureRichtextNodeTextSizeEl = document.createElement('div')
-    commonCaches.measureRichtextNodeTextSizeEl.style.position = 'fixed'
-    commonCaches.measureRichtextNodeTextSizeEl.style.left = '-999999px'
-    this.mindMap.el.appendChild(commonCaches.measureRichtextNodeTextSizeEl)
+  let html = `<div>${this.getData('text')}</div>`
+  if (!this.mindMap.commonCaches.measureRichtextNodeTextSizeEl) {
+    this.mindMap.commonCaches.measureRichtextNodeTextSizeEl =
+      document.createElement('div')
+    this.mindMap.commonCaches.measureRichtextNodeTextSizeEl.style.position =
+      'fixed'
+    this.mindMap.commonCaches.measureRichtextNodeTextSizeEl.style.left =
+      '-999999px'
+    this.mindMap.el.appendChild(
+      this.mindMap.commonCaches.measureRichtextNodeTextSizeEl
+    )
   }
-  let div = commonCaches.measureRichtextNodeTextSizeEl
+  let div = this.mindMap.commonCaches.measureRichtextNodeTextSizeEl
   div.innerHTML = html
   let el = div.children[0]
   el.classList.add('smm-richtext-node-wrap')
-  el.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+  addXmlns(el)
   el.style.maxWidth = textAutoWrapWidth + 'px'
   let { width, height } = el.getBoundingClientRect()
   // 如果文本为空，那么需要计算一个默认高度
@@ -137,18 +167,21 @@ function createRichTextNode() {
     let elTmp = div.children[0]
     elTmp.classList.add('smm-richtext-node-wrap')
     height = elTmp.getBoundingClientRect().height
+    div.innerHTML = html
   }
-  width = Math.ceil(width) + 1 // 修复getBoundingClientRect方法对实际宽度是小数的元素获取到的值是整数，导致宽度不够文本发生换行的问题
+  width = Math.min(Math.ceil(width) + 1, textAutoWrapWidth) // 修复getBoundingClientRect方法对实际宽度是小数的元素获取到的值是整数，导致宽度不够文本发生换行的问题
   height = Math.ceil(height)
   g.attr('data-width', width)
   g.attr('data-height', height)
-  let foreignObject = new ForeignObject()
-  foreignObject.width(width)
-  foreignObject.height(height)
-  foreignObject.add(div.children[0])
+  const foreignObject = createForeignObjectNode({
+    el: div.children[0],
+    width,
+    height
+  })
   g.add(foreignObject)
   return {
     node: g,
+    nodeContent: foreignObject,
     width,
     height
   }
@@ -156,15 +189,21 @@ function createRichTextNode() {
 
 //  创建文本节点
 function createTextNode() {
-  if (this.nodeData.data.richText) {
+  if (this.getData('richText')) {
     return this.createRichTextNode()
+  }
+  if (this.getData('resetRichText')) {
+    delete this.nodeData.data.resetRichText
   }
   let g = new G()
   let fontSize = this.getStyle('fontSize', false)
   let lineHeight = this.getStyle('lineHeight', false)
   // 文本超长自动换行
   let textStyle = this.style.getTextFontStyle()
-  let textArr = this.nodeData.data.text.split(/\n/gim)
+  let textArr = []
+  if (!isUndef(this.getData('text'))) {
+    textArr = String(this.getData('text')).split(/\n/gim)
+  }
   let maxWidth = this.mindMap.opt.textAutoWrapWidth
   let isMultiLine = false
   textArr.forEach((item, index) => {
@@ -197,7 +236,7 @@ function createTextNode() {
     g.add(node)
   })
   let { width, height } = g.bbox()
-  width = Math.ceil(width)
+  width = Math.min(Math.ceil(width), maxWidth)
   height = Math.ceil(height)
   g.attr('data-width', width)
   g.attr('data-height', height)
@@ -211,19 +250,23 @@ function createTextNode() {
 
 //  创建超链接节点
 function createHyperlinkNode() {
-  let { hyperlink, hyperlinkTitle } = this.nodeData.data
+  let { hyperlink, hyperlinkTitle } = this.getData()
   if (!hyperlink) {
     return
   }
+  const { customHyperlinkJump } = this.mindMap.opt
   let iconSize = this.mindMap.themeConfig.iconSize
-  let node = new SVG()
+  let node = new SVG().size(iconSize, iconSize)
   // 超链接节点
   let a = new A().to(hyperlink).target('_blank')
   a.node.addEventListener('click', e => {
-    e.stopPropagation()
+    if (typeof customHyperlinkJump === 'function') {
+      e.preventDefault()
+      customHyperlinkJump(hyperlink, this)
+    }
   })
   if (hyperlinkTitle) {
-    a.attr('title', hyperlinkTitle)
+    node.add(SVG(`<title>${hyperlinkTitle}</title>`))
   }
   // 添加一个透明的层，作为鼠标区域
   a.rect(iconSize, iconSize).fill({ color: 'transparent' })
@@ -241,20 +284,26 @@ function createHyperlinkNode() {
 
 //  创建标签节点
 function createTagNode() {
-  let tagData = this.nodeData.data.tag
+  let tagData = this.getData('tag')
   if (!tagData || tagData.length <= 0) {
     return []
   }
   let nodes = []
   tagData.slice(0, this.mindMap.opt.maxTag).forEach((item, index) => {
     let tag = new G()
+    tag.on('click', () => {
+      this.mindMap.emit('node_tag_click', this, item)
+    })
     // 标签文本
-    let text = new Text().text(item).x(8).cy(10)
+    let text = new Text().text(item).x(8).cy(8)
     this.style.tagText(text, index)
     let { width } = text.bbox()
     // 标签矩形
     let rect = new Rect().size(width + 16, 20)
-    this.style.tagRect(rect, index)
+    // 先从自定义的颜色中获取颜色，没有的话就按照内容生成
+    const tagsColorList = this.mindMap.opt.tagsColorMap || {}
+    const color = tagsColorList[text.node.textContent]
+    this.style.tagRect(rect, text, color)
     tag.add(rect).add(text)
     nodes.push({
       node: tag,
@@ -267,11 +316,14 @@ function createTagNode() {
 
 //  创建备注节点
 function createNoteNode() {
-  if (!this.nodeData.data.note) {
+  if (!this.getData('note')) {
     return null
   }
   let iconSize = this.mindMap.themeConfig.iconSize
-  let node = new SVG().attr('cursor', 'pointer')
+  let node = new SVG()
+    .attr('cursor', 'pointer')
+    .addClass('smm-node-note')
+    .size(iconSize, iconSize)
   // 透明的层，用来作为鼠标区域
   node.add(new Rect().size(iconSize, iconSize).fill({ color: 'transparent' }))
   // 备注图标
@@ -295,19 +347,20 @@ function createNoteNode() {
         this.mindMap.opt.customInnerElsAppendTo || document.body
       targetNode.appendChild(this.noteEl)
     }
-    this.noteEl.innerText = this.nodeData.data.note
+    this.noteEl.innerText = this.getData('note')
   }
   node.on('mouseover', () => {
-    let { left, top } = node.node.getBoundingClientRect()
+    const { left, top } = this.getNoteContentPosition()
     if (!this.mindMap.opt.customNoteContentShow) {
       this.noteEl.style.left = left + 'px'
-      this.noteEl.style.top = top + iconSize + 'px'
+      this.noteEl.style.top = top + 'px'
       this.noteEl.style.display = 'block'
     } else {
       this.mindMap.opt.customNoteContentShow.show(
-        this.nodeData.data.note,
+        this.getData('note'),
         left,
-        top + iconSize
+        top,
+        this
       )
     }
   })
@@ -325,20 +378,67 @@ function createNoteNode() {
   }
 }
 
+//  创建附件节点
+function createAttachmentNode() {
+  const { attachmentUrl, attachmentName } = this.getData()
+  if (!attachmentUrl) {
+    return
+  }
+  const iconSize = this.mindMap.themeConfig.iconSize
+  const node = new SVG().attr('cursor', 'pointer').size(iconSize, iconSize)
+  if (attachmentName) {
+    node.add(SVG(`<title>${attachmentName}</title>`))
+  }
+  // 透明的层，用来作为鼠标区域
+  node.add(new Rect().size(iconSize, iconSize).fill({ color: 'transparent' }))
+  // 备注图标
+  const iconNode = SVG(iconsSvg.attachment).size(iconSize, iconSize)
+  this.style.iconNode(iconNode)
+  node.add(iconNode)
+  node.on('click', e => {
+    this.mindMap.emit('node_attachmentClick', this, e, node)
+  })
+  node.on('contextmenu', e => {
+    this.mindMap.emit('node_attachmentContextmenu', this, e, node)
+  })
+  return {
+    node,
+    width: iconSize,
+    height: iconSize
+  }
+}
+
+// 获取节点备注显示位置
+function getNoteContentPosition() {
+  const iconSize = this.mindMap.themeConfig.iconSize
+  const { scaleY } = this.mindMap.view.getTransformData().transform
+  const iconSizeAddScale = iconSize * scaleY
+  let { left, top } = this._noteData.node.node.getBoundingClientRect()
+  top += iconSizeAddScale
+  return {
+    left,
+    top
+  }
+}
+
 // 测量自定义节点内容元素的宽高
 function measureCustomNodeContentSize(content) {
-  if (!commonCaches.measureCustomNodeContentSizeEl) {
-    commonCaches.measureCustomNodeContentSizeEl = document.createElement('div')
-    commonCaches.measureCustomNodeContentSizeEl.style.cssText = `
+  if (!this.mindMap.commonCaches.measureCustomNodeContentSizeEl) {
+    this.mindMap.commonCaches.measureCustomNodeContentSizeEl =
+      document.createElement('div')
+    this.mindMap.commonCaches.measureCustomNodeContentSizeEl.style.cssText = `
       position: fixed;
       left: -99999px;
       top: -99999px;
     `
-    this.mindMap.el.appendChild(commonCaches.measureCustomNodeContentSizeEl)
+    this.mindMap.el.appendChild(
+      this.mindMap.commonCaches.measureCustomNodeContentSizeEl
+    )
   }
-  commonCaches.measureCustomNodeContentSizeEl.innerHTML = ''
-  commonCaches.measureCustomNodeContentSizeEl.appendChild(content)
-  let rect = commonCaches.measureCustomNodeContentSizeEl.getBoundingClientRect()
+  this.mindMap.commonCaches.measureCustomNodeContentSizeEl.innerHTML = ''
+  this.mindMap.commonCaches.measureCustomNodeContentSizeEl.appendChild(content)
+  let rect =
+    this.mindMap.commonCaches.measureCustomNodeContentSizeEl.getBoundingClientRect()
   return {
     width: rect.width,
     height: rect.height
@@ -359,6 +459,8 @@ export default {
   createHyperlinkNode,
   createTagNode,
   createNoteNode,
+  createAttachmentNode,
+  getNoteContentPosition,
   measureCustomNodeContentSize,
   isUseCustomNodeContent
 }

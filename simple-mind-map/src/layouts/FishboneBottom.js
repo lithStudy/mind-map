@@ -1,5 +1,5 @@
 import Base from './Base'
-import { walk, asyncRun } from '../utils'
+import { walk, asyncRun, getNodeIndexInNodeList } from '../utils'
 import { CONSTANTS } from '../utils/constant'
 
 const degToRad = deg => {
@@ -127,7 +127,7 @@ class Fishbone extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (!node.nodeData.data.expand) {
+        if (!node.getData('expand')) {
           return
         }
         // 调整top
@@ -170,7 +170,8 @@ class Fishbone extends Base {
             item.top += _top
             // 调整left
             let offsetLeft =
-              (totalHeight2 + nodeTotalHeight) / Math.tan(degToRad(this.mindMap.opt.fishboneDeg))
+              (totalHeight2 + nodeTotalHeight) /
+              Math.tan(degToRad(this.mindMap.opt.fishboneDeg))
             item.left += offsetLeft
             totalHeight += offset
             totalHeight2 += nodeTotalHeight
@@ -236,9 +237,7 @@ class Fishbone extends Base {
   updateBrothersTop(node, addHeight) {
     if (node.parent && !node.parent.isRoot) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition()) {
           // 适配自定义位置
@@ -306,13 +305,15 @@ class Fishbone extends Base {
       })
       // 竖线
       if (len > 0) {
-        let line = this.draw.path()
+        let line = this.lineDraw.path()
         expandBtnSize = len > 0 ? expandBtnSize : 0
         let lineLength = maxx - node.left - node.width * 0.3
         if (node.parent && node.parent.isRoot) {
           line.plot(
             `M ${x},${top + height} L ${x + lineLength},${
-              top + height + Math.tan(degToRad(this.mindMap.opt.fishboneDeg)) * lineLength
+              top +
+              height +
+              Math.tan(degToRad(this.mindMap.opt.fishboneDeg)) * lineLength
             }`
           )
         } else {

@@ -1,27 +1,37 @@
 import Style from './Style'
 import Shape from './Shape'
-import { G, ForeignObject, SVG, Rect } from '@svgdotjs/svg.js'
+import { G, Rect } from '@svgdotjs/svg.js'
 import nodeGeneralizationMethods from './nodeGeneralization'
 import nodeExpandBtnMethods from './nodeExpandBtn'
 import nodeCommandWrapsMethods from './nodeCommandWraps'
 import nodeCreateContentsMethods from './nodeCreateContents'
 import nodeExpandBtnPlaceholderRectMethods from './nodeExpandBtnPlaceholderRect'
+import nodeCooperateMethods from './nodeCooperate'
 import { CONSTANTS } from '../../../constants/constant'
+import {
+  copyNodeTree,
+  createForeignObjectNode,
+  createUid,
+  addXmlns
+} from '../../../utils/index'
 
 //  节点类
 class Node {
   //  构造函数
   constructor(opt = {}) {
+    this.opt = opt
     // 节点数据
     this.nodeData = this.handleData(opt.data || {})
-    // id
+    // uid
     this.uid = opt.uid
     // 控制实例
     this.mindMap = opt.mindMap
     // 渲染实例
     this.renderer = opt.renderer
     // 渲染器
-    this.draw = opt.draw || null
+    this.draw = this.mindMap.draw
+    this.nodeDraw = this.mindMap.nodeDraw
+    this.lineDraw = this.mindMap.lineDraw
     // 样式实例
     this.style = new Style(this)
     // 形状实例
@@ -55,6 +65,8 @@ class Node {
     this.parent = opt.parent || null
     // 子节点
     this.children = opt.children || []
+    // 当前同时操作该节点的用户列表
+    this.userList = []
     // 节点内容的容器
     this.group = null
     this.shapeNode = null // 节点形状节点
@@ -68,15 +80,19 @@ class Node {
     this._tagData = null
     this._noteData = null
     this.noteEl = null
+    this.noteContentIsShow = false
+    this._attachmentData = null
+    this._prefixData = null
+    this._postfixData = null
     this._expandBtn = null
     this._lastExpandBtnType = null
     this._showExpandBtn = false
     this._openExpandNode = null
     this._closeExpandNode = null
     this._fillExpandNode = null
+    this._userListGroup = null
     this._lines = []
-    this._generalizationLine = null
-    this._generalizationNode = null
+    this._generalizationList = []
     this._unVisibleRectRegionNode = null
     this._isMouseenter = false
     // 尺寸信息
@@ -101,26 +117,36 @@ class Node {
     this.needLayout = false
     // 当前是否是隐藏状态
     this.isHide = false
-    // 概要相关方法
-    Object.keys(nodeGeneralizationMethods).forEach(item => {
-      this[item] = nodeGeneralizationMethods[item].bind(this)
-    })
-    // 展开收起按钮相关方法
-    Object.keys(nodeExpandBtnMethods).forEach(item => {
-      this[item] = nodeExpandBtnMethods[item].bind(this)
-    })
-    // 展开收起按钮占位元素相关方法
-    Object.keys(nodeExpandBtnPlaceholderRectMethods).forEach(item => {
-      this[item] = nodeExpandBtnPlaceholderRectMethods[item].bind(this)
-    })
-    // 命令的相关方法
-    Object.keys(nodeCommandWrapsMethods).forEach(item => {
-      this[item] = nodeCommandWrapsMethods[item].bind(this)
-    })
-    // 创建节点内容的相关方法
-    Object.keys(nodeCreateContentsMethods).forEach(item => {
-      this[item] = nodeCreateContentsMethods[item].bind(this)
-    })
+    const proto = Object.getPrototypeOf(this)
+    if (!proto.bindEvent) {
+      // 概要相关方法
+      Object.keys(nodeGeneralizationMethods).forEach(item => {
+        proto[item] = nodeGeneralizationMethods[item]
+      })
+      // 展开收起按钮相关方法
+      Object.keys(nodeExpandBtnMethods).forEach(item => {
+        proto[item] = nodeExpandBtnMethods[item]
+      })
+      // 展开收起按钮占位元素相关方法
+      Object.keys(nodeExpandBtnPlaceholderRectMethods).forEach(item => {
+        proto[item] = nodeExpandBtnPlaceholderRectMethods[item]
+      })
+      // 命令的相关方法
+      Object.keys(nodeCommandWrapsMethods).forEach(item => {
+        proto[item] = nodeCommandWrapsMethods[item]
+      })
+      // 创建节点内容的相关方法
+      Object.keys(nodeCreateContentsMethods).forEach(item => {
+        proto[item] = nodeCreateContentsMethods[item]
+      })
+      // 协同相关
+      if (this.mindMap.cooperate) {
+        Object.keys(nodeCooperateMethods).forEach(item => {
+          proto[item] = nodeCooperateMethods[item]
+        })
+      }
+      proto.bindEvent = true
+    }
     // 初始化
     this.getSize()
   }
@@ -152,6 +178,11 @@ class Node {
     this.top = 0
   }
 
+  // 节点被删除时需要复位的数据
+  resetWhenDelete() {
+    this._isMouseenter = false
+  }
+
   //  处理数据
   handleData(data) {
     data.data.expand = data.data.expand === false ? false : true
@@ -163,22 +194,45 @@ class Node {
   //  创建节点的各个内容对象数据
   createNodeData() {
     // 自定义节点内容
-    let { isUseCustomNodeContent, customCreateNodeContent } = this.mindMap.opt
+    let {
+      isUseCustomNodeContent,
+      customCreateNodeContent,
+      createNodePrefixContent,
+      createNodePostfixContent
+    } = this.mindMap.opt
     if (isUseCustomNodeContent && customCreateNodeContent) {
       this._customNodeContent = customCreateNodeContent(this)
     }
     // 如果没有返回内容，那么还是使用内置的节点内容
-    if (this._customNodeContent) return
+    if (this._customNodeContent) {
+      addXmlns(this._customNodeContent)
+      return
+    }
     this._imgData = this.createImgNode()
     this._iconData = this.createIconNode()
     this._textData = this.createTextNode()
     this._hyperlinkData = this.createHyperlinkNode()
     this._tagData = this.createTagNode()
     this._noteData = this.createNoteNode()
+    this._attachmentData = this.createAttachmentNode()
+    this._prefixData = createNodePrefixContent
+      ? createNodePrefixContent(this)
+      : null
+    if (this._prefixData && this._prefixData.el) {
+      addXmlns(this._prefixData.el)
+    }
+    this._postfixData = createNodePostfixContent
+      ? createNodePostfixContent(this)
+      : null
+    if (this._postfixData && this._postfixData.el) {
+      addXmlns(this._postfixData.el)
+    }
   }
 
   //  计算节点的宽高
   getSize() {
+    this.customLeft = this.getData('customLeft') || undefined
+    this.customTop = this.getData('customTop') || undefined
     this.updateGeneralization()
     this.createNodeData()
     let { width, height } = this.getNodeRect()
@@ -208,6 +262,11 @@ class Node {
     if (this._imgData) {
       this._rectInfo.imgContentWidth = imgContentWidth = this._imgData.width
       this._rectInfo.imgContentHeight = imgContentHeight = this._imgData.height
+    }
+    // 自定义前置内容
+    if (this._prefixData) {
+      textContentWidth += this._prefixData.width
+      textContentHeight = Math.max(textContentHeight, this._prefixData.height)
     }
     // 图标
     if (this._iconData.length > 0) {
@@ -240,6 +299,19 @@ class Node {
     if (this._noteData) {
       textContentWidth += this._noteData.width
       textContentHeight = Math.max(textContentHeight, this._noteData.height)
+    }
+    // 附件
+    if (this._attachmentData) {
+      textContentWidth += this._attachmentData.width
+      textContentHeight = Math.max(
+        textContentHeight,
+        this._attachmentData.height
+      )
+    }
+    // 自定义后置内容
+    if (this._postfixData) {
+      textContentWidth += this._postfixData.width
+      textContentHeight = Math.max(textContentHeight, this._postfixData.height)
     }
     // 文字内容部分的尺寸
     this._rectInfo.textContentWidth = textContentWidth
@@ -283,6 +355,8 @@ class Node {
     this.group.add(this.shapeNode)
     // 渲染一个隐藏的矩形区域，用来触发展开收起按钮的显示
     this.renderExpandBtnPlaceholderRect()
+    // 创建协同头像节点
+    if (this.createUserListNode) this.createUserListNode()
     // 概要节点添加一个带所属节点id的类名
     if (this.isGeneralization && this.generalizationBelongNode) {
       this.group.addClass('generalization_' + this.generalizationBelongNode.uid)
@@ -299,10 +373,11 @@ class Node {
     }
     // 如果存在自定义节点内容，那么使用自定义节点内容
     if (this.isUseCustomNodeContent()) {
-      let foreignObject = new ForeignObject()
-      foreignObject.width(width)
-      foreignObject.height(height)
-      foreignObject.add(this._customNodeContent)
+      const foreignObject = createForeignObjectNode({
+        el: this._customNodeContent,
+        width,
+        height
+      })
       this.group.add(foreignObject)
       addHoverNode()
       return
@@ -317,6 +392,19 @@ class Node {
     // 内容节点
     let textContentNested = new G()
     let textContentOffsetX = 0
+    // 自定义前置内容
+    if (this._prefixData) {
+      const foreignObject = createForeignObjectNode({
+        el: this._prefixData.el,
+        width: this._prefixData.width,
+        height: this._prefixData.height
+      })
+      foreignObject
+        .x(textContentOffsetX)
+        .y((this._rectInfo.textContentHeight - this._prefixData.height) / 2)
+      textContentNested.add(foreignObject)
+      textContentOffsetX += this._prefixData.width + textContentItemMargin
+    }
     // icon
     let iconNested = new G()
     if (this._iconData && this._iconData.length > 0) {
@@ -333,8 +421,13 @@ class Node {
     }
     // 文字
     if (this._textData) {
+      const oldX = this._textData.node.attr('data-offsetx') || 0
       this._textData.node.attr('data-offsetx', textContentOffsetX)
-      this._textData.node.x(textContentOffsetX).y(0)
+      // 修复safari浏览器节点存在图标时文字位置不正确的问题
+      ;(this._textData.nodeContent || this._textData.node)
+        .x(-oldX) // 修复非富文本模式下同时存在图标和换行的文本时，被收起和展开时图标与文字距离会逐渐拉大的问题
+        .x(textContentOffsetX)
+        .y((this._rectInfo.textContentHeight - this._textData.height) / 2)
       textContentNested.add(this._textData.node)
       textContentOffsetX += this._textData.width + textContentItemMargin
     }
@@ -368,6 +461,27 @@ class Node {
       textContentNested.add(this._noteData.node)
       textContentOffsetX += this._noteData.width
     }
+    // 附件
+    if (this._attachmentData) {
+      this._attachmentData.node
+        .x(textContentOffsetX)
+        .y((this._rectInfo.textContentHeight - this._attachmentData.height) / 2)
+      textContentNested.add(this._attachmentData.node)
+      textContentOffsetX += this._attachmentData.width
+    }
+    // 自定义后置内容
+    if (this._postfixData) {
+      const foreignObject = createForeignObjectNode({
+        el: this._postfixData.el,
+        width: this._postfixData.width,
+        height: this._postfixData.height
+      })
+      foreignObject
+        .x(textContentOffsetX)
+        .y((this._rectInfo.textContentHeight - this._postfixData.height) / 2)
+      textContentNested.add(foreignObject)
+      textContentOffsetX += this._postfixData.width
+    }
     // 文字内容整体
     textContentNested.translate(
       width / 2 - textContentNested.bbox().width / 2,
@@ -379,6 +493,7 @@ class Node {
     )
     this.group.add(textContentNested)
     addHoverNode()
+    this.mindMap.emit('node_layout_end', this)
   }
 
   // 给节点绑定事件
@@ -391,10 +506,21 @@ class Node {
         this.isMultipleChoice = false
         return
       }
+      if (
+        this.mindMap.opt.onlyOneEnableActiveNodeOnCooperate &&
+        this.userList.length > 0
+      ) {
+        return
+      }
       this.active(e)
     })
     this.group.on('mousedown', e => {
-      const { readonly, enableCtrlKeyNodeSelection, useLeftKeySelectionRightKeyDrag } = this.mindMap.opt
+      e.preventDefault()
+      const {
+        readonly,
+        enableCtrlKeyNodeSelection,
+        useLeftKeySelectionRightKeyDrag
+      } = this.mindMap.opt
       // 只读模式不需要阻止冒泡
       if (!readonly) {
         if (this.isRoot) {
@@ -410,24 +536,19 @@ class Node {
         }
       }
       // 多选和取消多选
-      if (e.ctrlKey && enableCtrlKeyNodeSelection) {
+      if (!readonly && (e.ctrlKey || e.metaKey) && enableCtrlKeyNodeSelection) {
         this.isMultipleChoice = true
-        let isActive = this.nodeData.data.isActive
+        let isActive = this.getData('isActive')
         if (!isActive)
           this.mindMap.emit(
             'before_node_active',
             this,
             this.renderer.activeNodeList
           )
-        this.mindMap.execCommand('SET_NODE_ACTIVE', this, !isActive)
-        this.mindMap.renderer[isActive ? 'removeActiveNode' : 'addActiveNode'](
-          this
-        )
-        this.mindMap.emit(
-          'node_active',
-          isActive ? null : this,
-          [...this.mindMap.renderer.activeNodeList]
-        )
+        this.mindMap.renderer[
+          isActive ? 'removeNodeFromActiveList' : 'addNodeToActiveList'
+        ](this, true)
+        this.renderer.emitNodeActiveEvent(isActive ? null : this)
       }
       this.mindMap.emit('node_mousedown', this, e)
     })
@@ -438,41 +559,60 @@ class Node {
       this.mindMap.emit('node_mouseup', this, e)
     })
     this.group.on('mouseenter', e => {
+      if (this.isDrag) return
       this._isMouseenter = true
       // 显示展开收起按钮
       this.showExpandBtn()
+      if (this.isGeneralization) {
+        this.handleGeneralizationMouseenter()
+      }
       this.mindMap.emit('node_mouseenter', this, e)
     })
     this.group.on('mouseleave', e => {
+      if (!this._isMouseenter) return
       this._isMouseenter = false
       this.hideExpandBtn()
+      if (this.isGeneralization) {
+        this.handleGeneralizationMouseleave()
+      }
       this.mindMap.emit('node_mouseleave', this, e)
     })
     // 双击事件
     this.group.on('dblclick', e => {
-      if (this.mindMap.opt.readonly) {
+      const { readonly, onlyOneEnableActiveNodeOnCooperate } = this.mindMap.opt
+      if (readonly || e.ctrlKey || e.metaKey) {
         return
       }
       e.stopPropagation()
+      if (onlyOneEnableActiveNodeOnCooperate && this.userList.length > 0) {
+        return
+      }
       this.mindMap.emit('node_dblclick', this, e)
     })
     // 右键菜单事件
     this.group.on('contextmenu', e => {
       const { readonly, useLeftKeySelectionRightKeyDrag } = this.mindMap.opt
-      // 按住ctrl键点击鼠标左键不知为何触发的是contextmenu事件
+      // Mac上按住ctrl键点击鼠标左键不知为何触发的是contextmenu事件
       if (readonly || e.ctrlKey) {
         return
       }
       e.stopPropagation()
       e.preventDefault()
       // 如果是多选节点结束，那么不要触发右键菜单事件
-      if(!useLeftKeySelectionRightKeyDrag && this.mindMap.select.hasSelectRange()) {
+      if (
+        this.mindMap.select &&
+        !useLeftKeySelectionRightKeyDrag &&
+        this.mindMap.select.hasSelectRange()
+      ) {
         return
       }
-      if (this.nodeData.data.isActive) {
-        this.renderer.clearActive()
+      // 如果有且只有当前节点激活了，那么不需要重新激活
+      if (
+        !(this.getData('isActive') && this.renderer.activeNodeList.length === 1)
+      ) {
+        this.renderer.clearActiveNodeList()
+        this.active(e)
       }
-      this.active(e)
       this.mindMap.emit('node_contextmenu', e, this)
     })
   }
@@ -483,14 +623,19 @@ class Node {
       return
     }
     e && e.stopPropagation()
-    if (this.nodeData.data.isActive) {
+    if (this.getData('isActive')) {
       return
     }
     this.mindMap.emit('before_node_active', this, this.renderer.activeNodeList)
-    this.renderer.clearActive()
-    this.mindMap.execCommand('SET_NODE_ACTIVE', this, true)
-    this.renderer.addActiveNode(this)
-    this.mindMap.emit('node_active', this, [...this.renderer.activeNodeList])
+    this.renderer.clearActiveNodeList()
+    this.renderer.addNodeToActiveList(this, true)
+    this.renderer.emitNodeActiveEvent(this)
+  }
+
+  // 取消激活该节点
+  deactivate() {
+    this.mindMap.renderer.removeNodeFromActiveList(this)
+    this.mindMap.renderer.emitNodeActiveEvent()
   }
 
   //  更新节点
@@ -498,20 +643,23 @@ class Node {
     if (!this.group) {
       return
     }
-    this.updateNodeActive()
+    this.updateNodeActiveClass()
     let { alwaysShowExpandBtn } = this.mindMap.opt
+    const childrenLength = this.nodeData.children.length
     if (alwaysShowExpandBtn) {
       // 需要移除展开收缩按钮
-      if (this._expandBtn && this.nodeData.children.length <= 0) {
+      if (this._expandBtn && childrenLength <= 0) {
         this.removeExpandBtn()
       } else {
         // 更新展开收起按钮
         this.renderExpandBtn()
       }
     } else {
-      let { isActive, expand } = this.nodeData.data
+      let { isActive, expand } = this.getData()
       // 展开状态且非激活状态，且当前鼠标不在它上面，才隐藏
-      if (expand && !isActive && !this._isMouseenter) {
+      if (childrenLength <= 0) {
+        this.removeExpandBtn()
+      } else if (expand && !isActive && !this._isMouseenter) {
         this.hideExpandBtn()
       } else {
         this.showExpandBtn()
@@ -519,6 +667,8 @@ class Node {
     }
     // 更新概要
     this.renderGeneralization()
+    // 更新协同头像
+    if (this.updateUserListNode) this.updateUserListNode()
     // 更新节点位置
     let t = this.group.transform()
     // // 如果上次不在可视区内，且本次也不在，那么直接返回
@@ -572,10 +722,23 @@ class Node {
   }
 
   // 更新节点激活状态
-  updateNodeActive() {
+  updateNodeActiveClass() {
     if (!this.group) return
-    const isActive = this.nodeData.data.isActive
+    const isActive = this.getData('isActive')
     this.group[isActive ? 'addClass' : 'removeClass']('active')
+  }
+
+  // 根据是否激活更新节点
+  updateNodeByActive(active) {
+    if (this.group) {
+      // 切换激活状态，需要切换展开收起按钮的显隐
+      if (active) {
+        this.showExpandBtn()
+      } else {
+        this.hideExpandBtn()
+      }
+      this.updateNodeActiveClass()
+    }
   }
 
   //  递归渲染
@@ -591,11 +754,13 @@ class Node {
         cursor: 'default'
       })
       this.bindGroupEvent()
-      this.draw.add(this.group)
+      this.nodeDraw.add(this.group)
       this.layout()
       this.update()
     } else {
-      this.draw.add(this.group)
+      if (!this.nodeDraw.has(this.group)) {
+        this.nodeDraw.add(this.group)
+      }
       if (this.needLayout) {
         this.needLayout = false
         this.layout()
@@ -607,7 +772,7 @@ class Node {
     if (
       this.children &&
       this.children.length &&
-      this.nodeData.data.expand !== false
+      this.getData('expand') !== false
     ) {
       let index = 0
       this.children.forEach(item => {
@@ -625,9 +790,9 @@ class Node {
     if (this.nodeData.inserting) {
       delete this.nodeData.inserting
       this.active()
-      setTimeout(() => {
-        this.mindMap.emit('node_dblclick', this, null, true)
-      }, 0)
+      // setTimeout(() => {
+      this.mindMap.emit('node_dblclick', this, null, true)
+      // }, 0)
     }
   }
 
@@ -648,10 +813,18 @@ class Node {
   // 销毁节点，不但会从画布删除，而且原节点直接置空，后续无法再插回画布
   destroy() {
     if (!this.group) return
+    if (this.emptyUser) {
+      this.emptyUser()
+    }
+    this.resetWhenDelete()
     this.group.remove()
     this.removeGeneralization()
     this.removeLine()
     this.group = null
+    if (this.parent) {
+      this.parent.removeLine()
+    }
+    this.style.onRemove()
   }
 
   //  隐藏节点
@@ -695,9 +868,61 @@ class Node {
     }
   }
 
+  // 设置节点透明度
+  // 包括连接线和下级节点
+  setOpacity(val) {
+    // 自身及连线
+    this.group.opacity(val)
+    this._lines.forEach(line => {
+      line.opacity(val)
+    })
+    // 子节点
+    this.children.forEach(item => {
+      item.setOpacity(val)
+    })
+    // 概要节点
+    this.setGeneralizationOpacity(val)
+  }
+
+  // 隐藏子节点
+  hideChildren() {
+    this._lines.forEach(item => {
+      item.hide()
+    })
+    if (this.children && this.children.length) {
+      this.children.forEach(item => {
+        item.hide()
+      })
+    }
+  }
+
+  // 显示子节点
+  showChildren() {
+    this._lines.forEach(item => {
+      item.show()
+    })
+    if (this.children && this.children.length) {
+      this.children.forEach(item => {
+        item.show()
+      })
+    }
+  }
+
+  // 被拖拽中
+  startDrag() {
+    this.isDrag = true
+    this.group.addClass('smm-node-dragging')
+  }
+
+  // 拖拽结束
+  endDrag() {
+    this.isDrag = false
+    this.group.removeClass('smm-node-dragging')
+  }
+
   //  连线
   renderLine(deep = false) {
-    if (this.nodeData.data.expand === false) {
+    if (this.getData('expand') === false) {
       return
     }
     let childrenLen = this.nodeData.children.length
@@ -711,7 +936,7 @@ class Node {
     if (childrenLen > this._lines.length) {
       // 创建缺少的线
       new Array(childrenLen - this._lines.length).fill(0).forEach(() => {
-        this._lines.push(this.draw.path())
+        this._lines.push(this.lineDraw.path())
       })
     } else if (childrenLen < this._lines.length) {
       // 删除多余的线
@@ -724,9 +949,9 @@ class Node {
     this.renderer.layout.renderLine(
       this,
       this._lines,
-      (line, node) => {
+      (...args) => {
         // 添加样式
-        this.styleLine(line, node)
+        this.styleLine(...args)
       },
       this.style.getStyle('lineStyle', true)
     )
@@ -751,11 +976,23 @@ class Node {
     return this.customLeft !== undefined && this.customTop !== undefined
   }
 
-  //  检查节点是否存在自定义位置的祖先节点
+  //  检查节点是否存在自定义位置的祖先节点，包含自身
   ancestorHasCustomPosition() {
     let node = this
     while (node) {
       if (node.hasCustomPosition()) {
+        return true
+      }
+      node = node.parent
+    }
+    return false
+  }
+
+  //  检查是否存在有概要的祖先节点
+  ancestorHasGeneralization() {
+    let node = this.parent
+    while (node) {
+      if (node.checkHasGeneralization()) {
         return true
       }
       node = node.parent
@@ -769,19 +1006,34 @@ class Node {
   }
 
   //  设置连线样式
-  styleLine(line, node) {
-    let width =
-      node.getSelfInhertStyle('lineWidth') || node.getStyle('lineWidth', true)
-    let color =
-      node.getSelfInhertStyle('lineColor') || node.getStyle('lineColor', true)
-    let dasharray =
-      node.getSelfInhertStyle('lineDasharray') ||
-      node.getStyle('lineDasharray', true)
-    this.style.line(line, {
-      width,
-      color,
-      dasharray
-    })
+  styleLine(line, childNode, enableMarker) {
+    const width =
+      childNode.getSelfInhertStyle('lineWidth') ||
+      childNode.getStyle('lineWidth', true)
+    const color =
+      childNode.getSelfInhertStyle('lineColor') ||
+      this.getRainbowLineColor(childNode) ||
+      childNode.getStyle('lineColor', true)
+    const dasharray =
+      childNode.getSelfInhertStyle('lineDasharray') ||
+      childNode.getStyle('lineDasharray', true)
+    this.style.line(
+      line,
+      {
+        width,
+        color,
+        dasharray
+      },
+      enableMarker,
+      childNode
+    )
+  }
+
+  // 获取彩虹线条颜色
+  getRainbowLineColor(node) {
+    return this.mindMap.rainbowLines
+      ? this.mindMap.rainbowLines.getNodeColor(node)
+      : ''
   }
 
   //  移除连线
@@ -793,13 +1045,13 @@ class Node {
   }
 
   //  检测当前节点是否是某个节点的祖先节点
-  isParent(node) {
-    if (this === node) {
+  isAncestor(node) {
+    if (this.uid === node.uid) {
       return false
     }
     let parent = node.parent
     while (parent) {
-      if (this === parent) {
+      if (this.uid === parent.uid) {
         return true
       }
       parent = parent.parent
@@ -807,19 +1059,40 @@ class Node {
     return false
   }
 
+  // 检查当前节点是否是某个节点的父节点
+  isParent(node) {
+    if (this.uid === node.uid) {
+      return false
+    }
+    const parent = node.parent
+    if (parent && this.uid === parent.uid) {
+      return true
+    }
+    return false
+  }
+
   //  检测当前节点是否是某个节点的兄弟节点
   isBrother(node) {
-    if (!this.parent || this === node) {
+    if (!this.parent || this.uid === node.uid) {
       return false
     }
     return this.parent.children.find(item => {
-      return item === node
+      return item.uid === node.uid
     })
+  }
+
+  // 获取该节点在兄弟节点列表中的索引
+  getIndexInBrothers() {
+    return this.parent && this.parent.children
+      ? this.parent.children.findIndex(item => {
+          return item.uid === this.uid
+        })
+      : -1
   }
 
   //  获取padding值
   getPaddingVale() {
-    let { isActive } = this.nodeData.data
+    let { isActive } = this.getData()
     return {
       paddingX: this.getStyle('paddingX', true, isActive),
       paddingY: this.getStyle('paddingY', true, isActive)
@@ -862,12 +1135,75 @@ class Node {
 
   //  获取数据
   getData(key) {
-    return key ? this.nodeData.data[key] || '' : this.nodeData.data
+    return key ? this.nodeData.data[key] : this.nodeData.data
+  }
+
+  // 获取该节点的纯数据，即不包含对节点实例的引用
+  getPureData(removeActiveState = true, removeId = false) {
+    return copyNodeTree({}, this, removeActiveState, removeId)
+  }
+
+  // 获取祖先节点列表
+  getAncestorNodes() {
+    const list = []
+    let parent = this.parent
+    while (parent) {
+      list.unshift(parent)
+      parent = parent.parent
+    }
+    return list
   }
 
   // 是否存在自定义样式
   hasCustomStyle() {
     return this.style.hasCustomStyle()
+  }
+
+  // 获取节点的尺寸和位置信息，宽高是应用了缩放效果后的实际宽高，位置是相对于浏览器窗口左上角的位置
+  getRect() {
+    return this.group.rbox()
+  }
+
+  // 获取节点的尺寸和位置信息，宽高是应用了缩放效果后的实际宽高，位置信息相对于画布
+  getRectInSvg() {
+    let { scaleX, scaleY, translateX, translateY } =
+      this.mindMap.draw.transform()
+    let { left, top, width, height } = this
+    let right = (left + width) * scaleX + translateX
+    let bottom = (top + height) * scaleY + translateY
+    left = left * scaleX + translateX
+    top = top * scaleY + translateY
+    return {
+      left,
+      right,
+      top,
+      bottom,
+      width: width * scaleX,
+      height: height * scaleY
+    }
+  }
+
+  // 高亮节点
+  highlight() {
+    if (this.group) this.group.addClass('smm-node-highlight')
+  }
+
+  // 取消高亮节点
+  closeHighlight() {
+    if (this.group) this.group.removeClass('smm-node-highlight')
+  }
+
+  // 伪克隆节点
+  // 克隆出的节点并不能真正当做一个节点使用
+  fakeClone() {
+    const newNode = new Node({
+      ...this.opt,
+      uid: createUid()
+    })
+    Object.keys(this).forEach(item => {
+      newNode[item] = this[item]
+    })
+    return newNode
   }
 }
 

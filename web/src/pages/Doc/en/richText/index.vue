@@ -4,9 +4,6 @@
 <blockquote>
 <p>v0.4.0+</p>
 </blockquote>
-<blockquote>
-<p>Note: This is a testing nature and imperfect function</p>
-</blockquote>
 <p>This plugin provides the ability to edit rich text of nodes, and takes effect after registration.</p>
 <p>By default, node editing can only uniformly apply styles to all text in the node. This plugin can support rich text editing effects. Currently, it supports bold, italic, underline, strikethrough, font, font size, color, and backgroundColor. Underline and line height are not supported.</p>
 <p>The principle of this plugin is to use <a href="https://github.com/quilljs/quill">Quill</a> editor implements rich text editing, and then uses the edited <code>DOM</code> node directly as the text data of the node, and embeds the <code>DOM</code> node through the <code>svg</code> <code>foreignObject</code> tag during rendering.</p>
@@ -21,6 +18,7 @@
 <blockquote>
 <p>The compatibility of dom to image more is relatively poor, and exported images are empty on many browsers, so you can replace them with html2canvas according to your own needs.</p>
 </blockquote>
+<p>After version <code>0.6.16+</code>, third-party libraries such as 'dom-to-image-more' and 'html2canvas' will no longer be used for export, Compatibility and export are no longer issues.</p>
 <h2>Register</h2>
 <pre class="hljs"><code><span class="hljs-keyword">import</span> MindMap <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;simple-mind-map&#x27;</span>
 <span class="hljs-keyword">import</span> RichText <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;simple-mind-map/src/plugins/RichText.js&#x27;</span>
@@ -58,6 +56,14 @@ MindMap.usePlugin(RichText, opt?)
 <pre class="hljs"><code>[<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, ..<span class="hljs-number">.100</span>]
 </code></pre>
 <h2>Method</h2>
+<h3>setNotActiveNodeStyle(node, style)</h3>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<ul>
+<li><code>style</code>：Object, style object.</li>
+</ul>
+<p>Set rich text style for inactive nodes.</p>
 <h3>selectAll()</h3>
 <p>Select All. When the node is being edited, you can select all the text in the node through this method.</p>
 <h3>focus()</h3>
@@ -65,7 +71,7 @@ MindMap.usePlugin(RichText, opt?)
 <p>v0.4.7+</p>
 </blockquote>
 <p>Focus.</p>
-<h3>formatText(config = {})</h3>
+<h3>formatText(config = {}, clear = false, pure = false)</h3>
 <ul>
 <li><code>config</code>：Object. The key is the style attribute and the value is the style value. The complete configuration is as follows:</li>
 </ul>
@@ -79,7 +85,15 @@ MindMap.usePlugin(RichText, opt?)
     <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;#333&#x27;</span> <span class="hljs-comment">// color</span>
 }
 </code></pre>
-<p>Formats the currently selected text.</p>
+<ul>
+<li>
+<p><code>clear</code>：Is clear style</p>
+</li>
+<li>
+<p><code>pure</code>：v0.9.4+, If set to true, only the text style will be formatted and will not be synchronized to the node's data</p>
+</li>
+</ul>
+<p>Formats the currently selected text. The style settings will be synchronized to the data of the node.</p>
 <h3>formatRangeText(range, config = {})</h3>
 <ul>
 <li><code>range</code>：The range object of <code>Quill</code>, has the following format:</li>

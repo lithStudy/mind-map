@@ -1,8 +1,8 @@
 @font-face {
   font-family: "iconfont"; /* Project id 2479351 */
-  src: url('iconfont.woff2?t=1691822758372') format('woff2'),
-       url('iconfont.woff?t=1691822758372') format('woff'),
-       url('iconfont.ttf?t=1691822758372') format('truetype');
+  src: url('iconfont.woff2?t=1719815803051') format('woff2'),
+       url('iconfont.woff?t=1719815803051') format('woff'),
+       url('iconfont.ttf?t=1719815803051') format('truetype');
 }
 
 .iconfont {
@@ -11,6 +11,54 @@
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.iconwaikuang:before {
+  content: "\e640";
+}
+
+.iconhighlight:before {
+  content: "\e6b8";
+}
+
+.iconyanshibofang:before {
+  content: "\e648";
+}
+
+.iconfujian:before {
+  content: "\e88a";
+}
+
+.icongeshihua:before {
+  content: "\e7a3";
+}
+
+.iconyuanma:before {
+  content: "\e658";
+}
+
+.icongundongtiao:before {
+  content: "\e670";
+}
+
+.iconxietongwendang:before {
+  content: "\e60d";
+}
+
+.iconTXT:before {
+  content: "\e6e1";
+}
+
+.iconwenjian1:before {
+  content: "\e69f";
+}
+
+.icondodeparent:before {
+  content: "\e70f";
+}
+
+.icongongshi:before {
+  content: "\e617";
 }
 
 .icontouming:before {

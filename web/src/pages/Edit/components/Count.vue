@@ -36,7 +36,9 @@ export default {
     }
   },
   computed: {
-    ...mapState(['isDark']),
+    ...mapState({
+      isDark: state => state.localConfig.isDark
+    })
   },
   created() {
     this.$bus.$on('data_change', this.onDataChange)
@@ -68,6 +70,7 @@ export default {
      * @Desc: 遍历
      */
     walk(data) {
+      if (!data) return
       this.num++
       this.textStr += String(data.data.text) || ''
       if (data.children && data.children.length > 0) {
@@ -98,7 +101,7 @@ export default {
     background: #262a2e;
 
     .item {
-      color: hsla(0,0%,100%,.6);
+      color: hsla(0, 0%, 100%, 0.6);
     }
   }
 
@@ -116,7 +119,7 @@ export default {
   }
 }
 
-@media screen and (max-width: 635px) {
+@media screen and (max-width: 740px) {
   .countContainer {
     display: none;
   }

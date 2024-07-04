@@ -22,73 +22,214 @@ const mindMap = new MindMap({
 
 ## 实例化选项
 
-| 字段名称                         | 类型    | 默认值           | 描述                                                         | 是否必填 |
-| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ | -------- |
-| el                               | Element |                  | 容器元素，必须为DOM元素                                      | 是       |
-| data                             | Object  | {}               | 思维导图数据，可参考：[exampleData.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/example/exampleData.js) |          |
-| layout                           | String  | logicalStructure | 布局类型，可选列表：logicalStructure（逻辑结构图）、mindMap（思维导图）、catalogOrganization（目录组织图）、organizationStructure（组织结构图）、timeline（v0.5.4+，时间轴）、timeline2（v0.5.4+，上下交替型时间轴）、fishbone（v0.5.4+，鱼骨图） |          |
-| fishboneDeg（v0.5.4+）                      | Number |  45          |  设置鱼骨结构图的斜线角度               |        |
-| theme                            | String  | default          | 主题，可选列表：default（默认）、classic（脑图经典）、minions（小黄人）、pinkGrape（粉红葡萄）、mint（薄荷）、gold（金色vip）、vitalityOrange（活力橙）、greenLeaf（绿叶）、dark2（暗色2）、skyGreen（天清绿）、classic2（脑图经典2）、classic3（脑图经典3）、classic4（脑图经典4，v0.2.0+）、classicGreen（经典绿）、classicBlue（经典蓝）、blueSky（天空蓝）、brainImpairedPink（脑残粉）、dark（暗色）、earthYellow（泥土黄）、freshGreen（清新绿）、freshRed（清新红）、romanticPurple（浪漫紫）、simpleBlack（v0.5.4+简约黑）、courseGreen（v0.5.4+课程绿）、coffee（v0.5.4+咖啡）、redSpirit（v0.5.4+红色精神）、blackHumour（v0.5.4+黑色幽默）、lateNightOffice（v0.5.4+深夜办公室）、blackGold（v0.5.4+黑金）、avocado（v.5.10-fix.2+牛油果）、autumn（v.5.10-fix.2+秋天）、orangeJuice（v.5.10-fix.2+橙汁） |          |
-| themeConfig                      | Object  | {}               | 主题配置，会和所选择的主题进行合并，可用字段可参考：[default.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/src/themes/default.js) |          |
-| scaleRatio                       | Number  | 0.1              | 放大缩小的增量比例                                           |          |
-| maxTag                           | Number  | 5                | 节点里最多显示的标签数量，多余的会被丢弃                     |          |
-| exportPadding                    | Number  | 20               | 导出图片时的内边距                                           |          |
-| imgTextMargin                    | Number  | 5                | 节点里图片和文字的间距                                       |          |
-| textContentMargin                | Number  | 2                | 节点里各种文字信息的间距，如图标和文字的间距                 |          |
-| selectTranslateStep              | Number  | 3                | 多选节点时鼠标移动到边缘时的画布移动偏移量                   |          |
-| selectTranslateLimit             | Number  | 20               | 多选节点时鼠标移动距边缘多少距离时开始偏移                   |          |
-| customNoteContentShow（v0.1.6+） | Object  | null             | 自定义节点备注内容显示，Object类型，结构为：{show: (noteContent, left, top) => {// 你的显示节点备注逻辑 }, hide: () => {// 你的隐藏节点备注逻辑 }} |          |
-| readonly（v0.1.7+）              | Boolean | false            | 是否是只读模式                                               |          |
-| enableFreeDrag（v0.2.4+）        | Boolean | false            | 是否开启节点自由拖拽                                         |          |
-| watermarkConfig（v0.2.4+）       | Object  |                  | 水印配置，详细配置请参考下方表格【水印配置】                 |          |
-| textAutoWrapWidth（v0.3.4+）     | Number  | 500 |   节点内每行文本达到该宽度后自动换行               |          |
-| customHandleMousewheel（v0.4.3+）     | Function  | null | 自定义鼠标滚轮事件处理，可以传一个函数，回调参数为事件对象                 |          |
-| mousewheelAction（v0.4.3+）     | String  | zoom | 鼠标滚轮的行为，`zoom`（放大缩小）、`move`（上下移动）。如果`customHandleMousewheel`传了自定义函数，这个属性不生效                 |          |
-| mousewheelMoveStep（v0.4.3+）     | Number  | 100 | 当`mousewheelAction`设为`move`时，可以通过该属性控制鼠标滚动一下视图移动的步长，单位`px`               |          |
-| mousewheelZoomActionReverse（v0.6.5+）     | Boolean  | false |  当mousewheelAction设为zoom时，默认向前滚动是缩小，向后滚动是放大，如果该属性设为true，那么会反过来  |          |
-| defaultInsertSecondLevelNodeText（v0.4.7+）     | String  | 二级节点 | 默认插入的二级节点的文字               |          |
-| defaultInsertBelowSecondLevelNodeText（v0.4.7+）     | String  | 分支主题 | 默认插入的二级以下节点的文字               |          |
-| expandBtnStyle（v0.5.0+）     | Object  | { color: '#808080', fill: '#fff', fontSize: 13, strokeColor: '#333333' } | 展开收起按钮的颜色，（fontSize及strokeColor字段为0.7.0+版本新增的，用于设置收起时显示节点数量的文字样式）  |          |
-| expandBtnIcon（v0.5.0+）     | Object  | { open: '', close: '' } | 自定义展开收起按钮的图标，可以传图标的svg字符串  |          |
-| expandBtnNumHandler（v0.7.0+）     | Function  |  | 用于自定义收起时显示节点数量的内容，接收一个参数，代表收起的节点实例，需要返回一个数字或字符串，代表最终显示的内容，比如你可以当数量大于99时，显示99+  |          |
-| isShowExpandNum（v0.7.0+）     | Boolean  | true | 节点收起时是否显示收起的数量  |          |
-| enableShortcutOnlyWhenMouseInSvg（v0.5.1+）     | Boolean  | true | 是否只有当鼠标在画布内才响应快捷键事件  |          |
-| enableNodeTransitionMove（v0.5.1+）（v0.6.7+已去除该特性）     | Boolean  | true | 是否开启节点动画过渡  |          |
-| nodeTransitionMoveDuration（v0.5.1+）（v0.6.7+已去除该特性）     | Number  | 300 | 如果开启节点动画过渡，可以通过该属性设置过渡的时间，单位ms  |          |
-| initRootNodePosition（v0.5.3+）     | Array  | null | 初始根节点的位置，可传一个数组，默认为`['center', 'center']`，代表根节点处于画布中心位置，除了`center`，关键词还可以设置`left`、`top`、`right`、`bottom`，除了可以传关键词，数组的每项还可以传递一个数字，代表具体的像素，可以传递一个百分比字符串，比如`['40%', '60%']`，代表水平位置在画布宽度的`40%`的位置，垂直位置在画布高度的`60%`的位置  |          |
-| exportPaddingX（v0.5.5+）     |  Number | 10 | 导出png、svg、pdf时的图形水平内边距  |          |
-| exportPaddingY（v0.5.5+）     | Number  | 10 | 导出png、svg、pdf时的图形垂直内边距  |          |
-| nodeTextEditZIndex（v0.5.5+）     | Number  | 3000 | 节点文本编辑框元素的z-index  |          |
-| nodeNoteTooltipZIndex（v0.5.5+）     | Number  | 3000 | 节点备注浮层元素的z-index  |          |
-| isEndNodeTextEditOnClickOuter（v0.5.5+）     | Boolean  | true |  是否在点击了画布外的区域时结束节点文本的编辑状态 |          |
-| maxHistoryCount（v0.5.6+）     | Number  | 1000 | 最大历史记录数  |          |
-| alwaysShowExpandBtn（v0.5.8+）     | Boolean  | false | 是否一直显示节点的展开收起按钮，默认为鼠标移上去和激活时才显示  |          |
-| iconList（v0.5.8+）     | Array  | [] | 扩展节点可插入的图标，数组的每一项为一个对象，对象详细结构请参考下方【图标配置】表格  |          |
-| maxNodeCacheCount（v0.5.10+）     |  Number | 1000 | 节点最大缓存数量。为了优化性能，内部会维护一个节点缓存池，用来复用节点，通过该属性可以指定池的最大缓存数量  |          |
-| defaultAssociativeLineText（v0.5.11+）     |  String | 关联 |  关联线默认文字 |          |
-| fitPadding（v0.6.0+）     |  Number | 50 |  思维导图适应画布大小时的内边距，单位：px |          |
-| enableCtrlKeyNodeSelection（v0.6.0+）     | Boolean  | true | 是否开启按住ctrl键多选节点的功能  |          |
-| useLeftKeySelectionRightKeyDrag（v0.6.0+）     | Boolean  | false | 设置为左键多选节点，右键拖动画布  |          |
-| beforeTextEdit（v0.6.0+）     |  Function/null | null | 节点即将进入编辑前的回调方法，如果该方法返回true以外的值，那么将取消编辑，函数可以返回一个值，或一个Promise，回调参数为节点实例  |          |
-| isUseCustomNodeContent（v0.6.3+）     |  Boolean | false | 是否自定义节点内容  |          |
-| customCreateNodeContent（v0.6.3+）     |  Function/null | null | 如果`isUseCustomNodeContent`设为`true`，那么需要使用该选项传入一个方法，接收节点实例`node`为参数（如果要获取该节点的数据，可以通过`node.nodeData.data`），需要返回自定义节点内容元素，也就是DOM节点，如果某个节点不需要自定义，那么返回`null`即可 |          |
-| mouseScaleCenterUseMousePosition（v0.6.4-fix.1+）     | Boolean  | true | 鼠标缩放是否以鼠标当前位置为中心点，否则以画布中心点 |          |
-| customInnerElsAppendTo（v0.6.12+）     | null/HTMLElement  | null | 指定内部一些元素（节点文本编辑元素、节点备注显示元素、关联线文本编辑元素、节点图片调整按钮元素）添加到的位置，默认添加到document.body下 |          |
-| nodeDragPlaceholderMaxSize（v0.6.12+）     | Number  | 20 | 拖拽元素时，指示元素新位置的块的最大高度 |          |
-| enableCreateHiddenInput（v0.6.13+）（v0.6.14+版本已去除该特性）     | Boolean  | true | 是否允许创建一个隐藏的输入框，该输入框会在节点激活时聚焦，用于粘贴数据和自动进入文本编辑状态 |          |
-| enableAutoEnterTextEditWhenKeydown（v0.6.13+）     | Boolean  | true | 是否在存在一个激活节点时，当按下中文、英文、数字按键时自动进入文本编辑模式 |          |
-| richTextEditFakeInPlace（v0.6.13+）     | Boolean  | false | 设置富文本节点编辑框和节点大小一致，形成伪原地编辑的效果，需要注意的是，只有当节点内只有文本、且形状是矩形才会有比较好的效果 |          |
-| customHandleClipboardText（v0.6.14+）     | Function  | null | 自定义对剪贴板文本的处理。当按ctrl+v粘贴时会读取用户剪贴板中的文本和图片，默认只会判断文本是否是普通文本和simple-mind-map格式的节点数据，如果你想处理其他思维导图的数据，比如processon、zhixi等，那么可以传递一个函数，接受当前剪贴板中的文本为参数，返回处理后的数据，可以返回两种类型：1.返回一个纯文本，那么会直接以该文本创建一个子节点；2.返回一个节点对象，格式如下：{ simpleMindMap: true, data: { data: { text: '' }, children: [] } }，代表是simple-mind-map格式的数据，节点数据同simple-mind-map节点数据格式，如果你的处理逻辑存在异步逻辑，也可以返回一个promise |          |
-| errorHandler（v0.6.15+）     | Function  |  | 自定义错误处理函数，目前只会抛出一些异步逻辑出错的情况。可以传递一个函数，会接收两个参数，第一个为错误的类型，第二个为错误对象 |          |
-| disableMouseWheelZoom（v0.6.15+）     | Boolean  | false | 禁止鼠标滚轮缩放，你仍旧可以使用api进行缩放 |          |
-| resetCss（v0.6.16+）     | String  |  * { margin: 0; padding: 0; box-sizing: border-box; } | 设置导出图片和svg时，针对富文本节点内容，也就是嵌入到svg中的html节点的默认样式覆盖，如果不覆盖，节点内容会发生偏移 |          |
-| enableDblclickReset（v0.6.17+）     | Boolean  | true（v0.7.0+改为false）  | 开启鼠标双击复位思维导图位置及缩放 |          |
-| minExportImgCanvasScale（v0.7.0+）     | Number  | 2  | 导出图片和pdf时canvas的缩放倍数，该配置会和window.devicePixelRatio值取最大值，用于提升图片清晰度 |          |
-| hoverRectColor（v0.7.0+）     | String  | rgb(94, 200, 248)  | 节点鼠标hover和激活时显示的矩形边框颜色，hover时会添加0.6的透明度 |          |
-| hoverRectPadding（v0.7.0+）     | Number  | 2  | 节点鼠标hover和激活时显示的矩形边框距节点内容的距离 |          |
-| selectTextOnEnterEditText（v0.7.0+）     | Boolean  | true  | 双击节点进入节点文本编辑时是否默认选中文本，默认只在创建新节点时会选中 |          |
+### 1.基本
 
-### 水印配置
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| el                               | Element |                  | 容器元素，必传，必须为DOM元素（当容器元素在页面上的位置发生了改变，但大小没有改变的情况下必须调用`getElRectInfo()`方法更新库内部的相关信息；当大小也发生了改变后必须调用`resize()`方法，否则会造成一些功能异常）              |
+| data                             | Object 、 null  |   | 思维导图数据，可参考下方【数据结构】介绍。v0.9.9+支持传空对象或者null，画布会显示空白 |
+| layout                           | String  | logicalStructure | 布局类型，可选列表：logicalStructure（逻辑结构图）、logicalStructureLeft（v0.10.2+，向左逻辑结构图）、mindMap（思维导图）、catalogOrganization（目录组织图）、organizationStructure（组织结构图）、timeline（v0.5.4+，时间轴）、timeline2（v0.5.4+，上下交替型时间轴）、fishbone（v0.5.4+，鱼骨图） |
+| fishboneDeg（v0.5.4+）                      | Number |  45          |  设置鱼骨结构图的斜线角度               |
+| theme                            | String  | default          | 主题，可选列表：default（默认）、classic（脑图经典）、minions（小黄人）、pinkGrape（粉红葡萄）、mint（薄荷）、gold（金色vip）、vitalityOrange（活力橙）、greenLeaf（绿叶）、dark2（暗色2）、skyGreen（天清绿）、classic2（脑图经典2）、classic3（脑图经典3）、classic4（脑图经典4，v0.2.0+）、classicGreen（经典绿）、classicBlue（经典蓝）、blueSky（天空蓝）、brainImpairedPink（脑残粉）、dark（暗色）、earthYellow（泥土黄）、freshGreen（清新绿）、freshRed（清新红）、romanticPurple（浪漫紫）、simpleBlack（v0.5.4+简约黑）、courseGreen（v0.5.4+课程绿）、coffee（v0.5.4+咖啡）、redSpirit（v0.5.4+红色精神）、blackHumour（v0.5.4+黑色幽默）、lateNightOffice（v0.5.4+深夜办公室）、blackGold（v0.5.4+黑金）、avocado（v.5.10-fix.2+牛油果）、autumn（v.5.10-fix.2+秋天）、orangeJuice（v.5.10-fix.2+橙汁） |
+| themeConfig                      | Object  | {}               | 主题配置，会和所选择的主题进行合并，可用字段可参考：[default.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/src/themes/default.js) |
+| scaleRatio                       | Number  | 0.1              | 放大缩小的增量比例                                           |
+| maxTag                           | Number  | 5                | 节点里最多显示的标签数量，多余的会被丢弃                     |
+| imgTextMargin                    | Number  | 5                | 节点里图片和文字的间距                                       |
+| textContentMargin                | Number  | 2                | 节点里各种文字信息的间距，如图标和文字的间距                 |
+| customNoteContentShow（v0.1.6+） | Object  | null             | 自定义节点备注内容显示，Object类型，结构为：{show: (noteContent, left, top, node) => {// 你的显示节点备注逻辑。node为v0.8.1+版本新增的回参，代表节点实例 }, hide: () => {// 你的隐藏节点备注逻辑 }} |
+| readonly（v0.1.7+）              | Boolean | false            | 是否是只读模式                                               |
+| textAutoWrapWidth（v0.3.4+）     | Number  | 500 |   节点内每行文本达到该宽度后自动换行               |
+| customHandleMousewheel（v0.4.3+）     | Function  | null | 自定义鼠标滚轮事件处理，可以传一个函数，回调参数为事件对象                 |
+| mousewheelAction（v0.4.3+）     | String  | zoom（v0.9.1+默认改为move） | 鼠标滚轮的行为，`zoom`（放大缩小）、`move`（上下移动）。如果`customHandleMousewheel`传了自定义函数，这个属性不生效                 |
+| mousewheelMoveStep（v0.4.3+）     | Number  | 100 | 当`mousewheelAction`设为`move`时，可以通过该属性控制鼠标滚动一下视图移动的步长，单位`px`               |
+| mousewheelZoomActionReverse（v0.6.5+）     | Boolean  | false（v0.9.1+默认改为true） |  当mousewheelAction设为zoom时，或者按住Ctrl键时，默认向前滚动是缩小，向后滚动是放大，如果该属性设为true，那么会反过来  |
+| defaultInsertSecondLevelNodeText（v0.4.7+）     | String  | 二级节点 | 默认插入的二级节点的文字               |
+| defaultInsertBelowSecondLevelNodeText（v0.4.7+）     | String  | 分支主题 | 默认插入的二级以下节点的文字               |
+| expandBtnStyle（v0.5.0+）     | Object  | { color: '#808080', fill: '#fff', fontSize: 13, strokeColor: '#333333' } | 展开收起按钮的颜色，（fontSize及strokeColor字段为0.7.0+版本新增的，用于设置收起时显示节点数量的文字样式）  |
+| expandBtnIcon（v0.5.0+）     | Object  | { open: '', close: '' } | 自定义展开收起按钮的图标，可以传图标的svg字符串  |
+| expandBtnNumHandler（v0.7.0+）     | Function  |  | 用于自定义收起时显示节点数量的内容，接收一个参数，代表收起的节点实例，需要返回一个数字或字符串，代表最终显示的内容，比如你可以当数量大于99时，显示99+  |
+| isShowExpandNum（v0.7.0+）     | Boolean  | true | 节点收起时是否显示收起的数量  |
+| enableShortcutOnlyWhenMouseInSvg（v0.5.1+）     | Boolean  | true | 是否只有当鼠标在画布内才响应快捷键事件  |
+| enableNodeTransitionMove（v0.5.1+）（v0.6.7+已去除该特性）     | Boolean  | true | 是否开启节点动画过渡  |
+| nodeTransitionMoveDuration（v0.5.1+）（v0.6.7+已去除该特性）     | Number  | 300 | 如果开启节点动画过渡，可以通过该属性设置过渡的时间，单位ms  |
+| initRootNodePosition（v0.5.3+）     | Array  | null | 初始根节点的位置，可传一个数组，默认为`['center', 'center']`，代表根节点处于画布中心位置，除了`center`，关键词还可以设置`left`、`top`、`right`、`bottom`，除了可以传关键词，数组的每项还可以传递一个数字，代表具体的像素，可以传递一个百分比字符串，比如`['40%', '60%']`，代表水平位置在画布宽度的`40%`的位置，垂直位置在画布高度的`60%`的位置  |
+| nodeTextEditZIndex（v0.5.5+）     | Number  | 3000 | 节点文本编辑框元素的z-index  |
+| nodeNoteTooltipZIndex（v0.5.5+）     | Number  | 3000 | 节点备注浮层元素的z-index  |
+| isEndNodeTextEditOnClickOuter（v0.5.5+）     | Boolean  | true |  是否在点击了画布外的区域时结束节点文本的编辑状态 |
+| maxHistoryCount（v0.5.6+）     | Number  | 1000（v0.9.2+改为500） | 最大历史记录数  |
+| alwaysShowExpandBtn（v0.5.8+）     | Boolean  | false | 是否一直显示节点的展开收起按钮，默认为鼠标移上去和激活时才显示  |
+| iconList（v0.5.8+）     | Array  | [] | 扩展节点可插入的图标，数组的每一项为一个对象，对象详细结构请参考下方【图标配置】表格  |
+| maxNodeCacheCount（v0.5.10+）     |  Number | 1000 | 节点最大缓存数量。为了优化性能，内部会维护一个节点缓存池，用来复用节点，通过该属性可以指定池的最大缓存数量  |
+| fitPadding（v0.6.0+）     |  Number | 50 |  思维导图适应画布大小时的内边距，单位：px |
+| enableCtrlKeyNodeSelection（v0.6.0+）     | Boolean  | true | 是否开启按住ctrl键多选节点的功能  |
+| useLeftKeySelectionRightKeyDrag（v0.6.0+）     | Boolean  | false | 设置为左键多选节点，右键拖动画布  |
+| beforeTextEdit（v0.6.0+）     |  Function/null | null | 节点即将进入编辑前的回调方法，如果该方法返回true以外的值，那么将取消编辑，函数可以返回一个值，或一个Promise，回调参数为节点实例  |
+| isUseCustomNodeContent（v0.6.3+）     |  Boolean | false | 是否自定义节点内容  |
+| customCreateNodeContent（v0.6.3+）     |  Function/null | null | 如果`isUseCustomNodeContent`设为`true`，那么需要使用该选项传入一个方法，接收节点实例`node`为参数（如果要获取该节点的数据，可以通过`node.nodeData.data`），需要返回自定义节点内容元素，也就是DOM节点，如果某个节点不需要自定义，那么返回`null`即可 |
+| mouseScaleCenterUseMousePosition（v0.6.4-fix.1+）     | Boolean  | true | 鼠标缩放是否以鼠标当前位置为中心点，否则以画布中心点 |
+| customInnerElsAppendTo（v0.6.12+）     | null/HTMLElement  | null | 指定内部一些元素（节点文本编辑元素、节点备注显示元素、关联线文本编辑元素、节点图片调整按钮元素）添加到的位置，默认添加到document.body下 |
+| enableCreateHiddenInput（v0.6.13+）（v0.6.14+版本已去除该特性）     | Boolean  | true | 是否允许创建一个隐藏的输入框，该输入框会在节点激活时聚焦，用于粘贴数据和自动进入文本编辑状态 |
+| enableAutoEnterTextEditWhenKeydown（v0.6.13+）     | Boolean  | true | 是否在存在一个激活节点时，当按下中文、英文、数字按键时自动进入文本编辑模式 |
+| customHandleClipboardText（v0.6.14+）     | Function  | null | 自定义对剪贴板文本的处理。当按ctrl+v粘贴时会读取用户剪贴板中的文本和图片，默认只会判断文本是否是普通文本和simple-mind-map格式的节点数据，如果你想处理其他思维导图的数据，比如processon、zhixi等，那么可以传递一个函数，接受当前剪贴板中的文本为参数，返回处理后的数据，可以返回两种类型：1.返回一个纯文本，那么会直接以该文本创建一个子节点；2.返回一个节点对象，格式如下：{ simpleMindMap: true, data: { data: { text: '' }, children: [] } }，代表是simple-mind-map格式的数据，节点数据同simple-mind-map节点数据格式，如果你的处理逻辑存在异步逻辑，也可以返回一个promise |
+| errorHandler（v0.6.15+）     | Function  |  | 自定义错误处理函数，目前只会抛出一些异步逻辑出错的情况。可以传递一个函数，会接收两个参数，第一个为错误的类型，第二个为错误对象 |
+| disableMouseWheelZoom（v0.6.15+）     | Boolean  | false | 禁止鼠标滚轮缩放，你仍旧可以使用api进行缩放 |
+| enableDblclickReset（v0.6.17+）（v0.8.0+已删除该属性）     | Boolean  | true（v0.7.0+改为false）  | 开启鼠标双击复位思维导图位置及缩放 |
+| enableDblclickBackToRootNode（v0.8.0+）     | Boolean  | false  | 是否在鼠标双击时回到根节点，也就是让根节点居中显示 |
+| hoverRectColor（v0.7.0+）     | String  | rgb(94, 200, 248)  | 节点鼠标hover和激活时显示的矩形边框颜色，hover时会添加0.6的透明度 |
+| hoverRectPadding（v0.7.0+）     | Number  | 2  | 节点鼠标hover和激活时显示的矩形边框距节点内容的距离 |
+| selectTextOnEnterEditText（v0.7.0+）     | Boolean  | true  | 双击节点进入节点文本编辑时是否默认选中文本，默认只在创建新节点时会选中 |
+| deleteNodeActive（v0.7.1+）     | Boolean  | true  | 是否开启删除节点后自动激活节点相邻节点或父节点的功能 |
+| fit（v0.7.1-fix.2+）     | Boolean  | false  | 首次渲染时是否缩放至适应画布大小 |
+| tagsColorMap（v0.7.2+）     | Object  | {}  | 自定义节点标签的颜色，可传一个对象，key为要指定颜色的标签内容，value为该标签内容的颜色，如果不传内部会根据标签内容生成对应的颜色 |
+| cooperateStyle（v0.7.3+）     | Object  | { avatarSize: 22, fontSize: 12 }  | 节点协作编辑时的人员头像样式配置，字段含义分别为：头像大小、如果是文字头像，那么文字的大小 |
+| onlyOneEnableActiveNodeOnCooperate（v0.9.8+）     | Boolean | false  | 协同编辑时，同一个节点不能同时被多人选中 |
+| defaultGeneralizationText（v0.8.0+）     |  String | 概要  | 插入概要的默认文本 |
+| handleIsSplitByWrapOnPasteCreateNewNode（v0.8.0+）     | Function / null | null  | 粘贴文本的方式创建新节点时，控制是否按换行自动分割节点，即如果存在换行，那么会根据换行创建多个节点，否则只会创建一个节点，可以传递一个函数，返回promise，resolve代表根据换行分割，reject代表忽略换行 |
+| addHistoryTime（v0.8.0+）     | Number | 100  | 指定时间内只允许添加一次历史记录，避免添加没有必要的中间状态，单位：ms  |
+| isDisableDrag（v0.8.1+）     | Boolean | false  | 是否禁止拖动画布  |
+| highlightNodeBoxStyle（v0.9.0+）     | Object | { stroke: 'rgb(94, 200, 248)', fill: 'transparent' }  | 鼠标移入概要高亮所属节点时的高亮框样式  |
+| createNewNodeBehavior（v0.9.1+）     | String | default  | 创建新节点时的行为。default（默认会激活新创建的节点，并且进入编辑模式。如果同时创建了多个新节点，那么只会激活而不会进入编辑模式）、notActive（不激活新创建的节点）、activeOnly（只激活新创建的节点，不进入编辑模式）  |
+| defaultNodeImage（v0.9.1-fix.2+）     | String |   | 图片地址，当节点图片加载失败时显示的默认图片  |
+| handleNodePasteImg（v0.9.2+）     | null 或 Function | null  | 在节点上粘贴剪贴板中的图片的处理方法，默认是转换为data:url数据插入到节点中，你可以通过该方法来将图片数据上传到服务器，实现保存图片的url。可以传递一个异步方法，接收Blob类型的图片数据，需要返回指定结构：{ url, size: {width, height} }  |
+| isLimitMindMapInCanvas（v0.9.2+）     | Boolean |  false | 是否将思维导图限制在画布内。比如向右拖动时，思维导图图形的最左侧到达画布中心时将无法继续向右拖动，其他同理 |
+| beforeShortcutRun（v0.9.9+）     | Function、null | null  | 快捷键操作即将执行前的生命周期函数，返回true可以阻止操作执行。函数接收两个参数：key（快捷键）、activeNodeList（当前激活的节点列表） |
+| resetScaleOnMoveNodeToCenter（v0.9.12+）     | Boolean |  false | 移动节点到画布中心、回到根节点等操作时是否将缩放层级复位为100%（该选项实际影响的是render.moveNodeToCenter方法，moveNodeToCenter方法本身也存在第二个参数resetScale来设置是否复位，如果resetScale参数没有传递，那么使用resetScaleOnMoveNodeToCenter配置，否则使用resetScale配置）。 |
+| createNodePrefixContent（v0.9.12+）     | Function、null | null  | 添加附加的节点前置内容。前置内容指和文本同一行的区域中的前置内容，不包括节点图片部分。可以传递一个函数，这个函数接收一个节点实例的参数，可以返回{el, width, height}格式的对象，el为DOM节点对象，width和height代表内容的宽高，数字类型，如果不需要自定义内容，也可以返回null |
+| createNodePostfixContent（v0.9.12+）     | Function、null | null  | 添加附加的节点后置内容。后置内容指和文本同一行的区域中的后置内容，不包括节点图片部分。用法同createNodePrefixContent |
+| disabledClipboard（v0.10.2+）     | Boolean | false | 是否禁止粘贴用户剪贴板中的数据，禁止将复制的节点数据写入用户的剪贴板中，此时只能复制和粘贴画布内的节点数据 |
+| customHyperlinkJump（v0.10.2+）     | null、Function | false | 自定义超链接的跳转。如果不传，默认会以新窗口的方式打开超链接，可以传递一个函数，函数接收两个参数：link（超链接的url）、node（所属节点实例），只要传递了函数，就会阻止默认的跳转 |
+
+#### 1.1数据结构
+
+基本的数据结构如下：
+
+```js
+{
+  data: {
+    text: '', // 节点的文本，可以是富文本，也就是html格式的，此时richText要设为true
+    richText: false, // 节点的文本是否是富文本模式
+    expand: true, // 节点是否展开
+    uid: '',// 节点唯一的id，可不传，内部会生成
+    icon: [], // 图标，格式可参考教程里的【插入和扩展节点图标】章节
+    image: '', // 图片的url
+    imageTitle: '', // 图片的标题，可为空
+    imageSize: { // 图片的尺寸
+      width: 100, // 图片的宽度，必传
+      height: 100, // 图片的高度，必传
+      custom: false // 如果设为true，图片的显示大小不受主题控制，以imageSize.width和imageSize.height为准
+    },
+    hyperlink: '', // 超链接地址
+    hyperlinkTitle: '', // 超链接的标题
+    note: '', // 备注的内容
+    attachmentUrl: '',// v0.9.10+，附件url
+    attachmentName: '',// v0.9.10+，附件名称
+    tag: [], // 标签列表
+    generalization: [{// （0.9.0以下版本不支持数组，只能设置单个概要数据）节点的概要，如果没有概要generalization设为null即可
+      text: '', // 概要的文本
+      richText: false, // 节点的文本是否是富文本模式
+      // ...其他普通节点的字段都支持，但是不支持children
+    }],
+    associativeLineTargets: [''],// 如果存在关联线，那么为目标节点的uid列表
+    associativeLineText: '',// 关联线文本
+    // ...其他样式字段，可以参考主题
+  },
+  children [// 子节点，结构和根节点一致
+    {
+      data: {},
+      children: []
+    }
+  ]
+}
+```
+
+如果你要添加自定义的字段，可以添加到`data`、`children`同级，如果你要添加到`data`对象里，那么请使用`_`开头来命名你的自定义字段，内部会通过这个来判断是否是自定义字段。
+
+#### 1.2图标配置
+
+| 字段名称    | 类型   | 默认值                                      | 描述                                 |
+| ----------- | ------ | ------------------------------------------- | ------------------------------------ |
+| name        | String |                                           | 图标分组的名称 |
+| type        | String |                                           | 图标分组的值 |
+| list        | Array  |                                           | 分组下的图标列表，数组的每一项为一个对象，`{ name: '', icon: '' }`，`name`代表图标的名称，`icon`代表图标，可以是`svg`图标，比如`<svg ...><path></path></svg>`，也可以是图片`url`，或者是`base64`图标，比如`data:image/png;base64,...` |
+
+
+### 2.Export插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| exportPadding（已废除）       | Number  | 20               | 导出图片时的内边距          |
+| exportPaddingX（v0.5.5+）     |  Number | 10 | 导出png、svg、pdf时的图形水平内边距  |
+| exportPaddingY（v0.5.5+）     | Number  | 10 | 导出png、svg、pdf时的图形垂直内边距  |
+| resetCss（v0.6.16+）     | String  |  * { margin: 0; padding: 0; box-sizing: border-box; } | 设置导出图片和svg时，针对富文本节点内容，也就是嵌入到svg中的html节点的默认样式覆盖，如果不覆盖，节点内容会发生偏移 |
+| minExportImgCanvasScale（v0.7.0+）     | Number  | 2  | 导出图片和pdf时canvas的缩放倍数，该配置会和window.devicePixelRatio值取最大值，用于提升图片清晰度 |
+| addContentToHeader（v0.9.9+）     | Function、null | null  | 导出png、svg、pdf时在头部添加自定义内容。可传递一个函数，这个函数可以返回null代表不添加内容，也可以返回一个对象，详细介绍请参考下方【导出时如何添加自定义内容】 |
+| addContentToFooter（v0.9.9+）     | Function、null | null  | 基本释义同addContentToHeader，在尾部添加自定义内容 |
+| handleBeingExportSvg（v0.10.1+）     | Function、null | null  | 导出png、svg、pdf时会获取画布上的svg数据进行克隆，然后通过该克隆的元素进行导出，如果你想对该克隆元素做一些处理，比如新增、替换、修改其中的一些元素，那么可以通过该参数传递一个处理函数，接收svg元素对象，处理后，需要返回原svg元素对象。（需要注意的是svg对象指的是@svgdotjs/svg.js库的元素对象，所以你需要阅读该库的文档来操作该对象） |
+
+#### 2.1导出时如何添加自定义内容
+
+`addContentToHeader`和`addContentToFooter`两个实例化选项可以用于在导出`png`、`svg`、`pdf`时在头部和尾部添加自定义的内容，默认为`null`，代表不配置，可以传递一个函数，函数可以返回`null`，代表不添加内容，如果要添加内容那么需要返回如下的结构：
+
+```
+{
+  el,// 要追加的自定义DOM节点，样式可内联
+  cssText,// 可选，如果样式不想内联，可以传递该值，一个css字符串
+  height: 50// 返回的DOM节点的高度，必须传递
+}
+```
+
+一个简单的示例：
+
+```js
+new MindMap({
+  addContentToFooter: () => {
+    const el = document.createElement('div')
+    el.className = 'footer'
+    el.innerHTML = '来自：simple-mind-map'
+    const cssText = `
+      .footer {
+        width: 100%;
+        height: 30px;
+      }
+    `
+    return {
+      el,
+      cssText,
+      height: 30
+    }
+  }
+})
+```
+
+### 3.Select插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| selectTranslateStep              | Number  | 3                | 多选节点时鼠标移动到边缘时的画布移动偏移量                   |
+| selectTranslateLimit             | Number  | 20               | 多选节点时鼠标移动距边缘多少距离时开始偏移                   |
+
+### 4.Drag插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| enableFreeDrag（v0.2.4+）        | Boolean | false            | 是否开启节点自由拖拽（自由拖拽即可以把节点拖拽到画布的任意位置，注意不是拖拽节点成为其他节点的子节点兄弟节点的功能，自由拖拽的连线会存在一定问题，所以该特性最好不要使用）                                         |
+| nodeDragPlaceholderMaxSize（v0.6.12+）（v0.10.0+已废除）     | Number  | 20 | 拖拽元素时，指示元素新位置的块的最大高度 |
+| autoMoveWhenMouseInEdgeOnDrag（v0.7.1+）     | Boolean  | true  | 拖拽节点时鼠标移动到画布边缘是否开启画布自动移动 |
+| dragMultiNodeRectConfig（v0.7.2+）     | Object  | { width: 40, height: 20, fill: 'rgb(94, 200, 248)' }  | 拖拽多个节点时随鼠标移动的示意矩形的样式配置，传递一个对象，字段含义分别为矩形的宽、高、填充色 |
+| dragPlaceholderRectFill（v0.7.2+）     |  String | rgb(94, 200, 248)  | 节点拖拽时新位置的示意矩形的填充颜色 |
+| dragPlaceholderLineConfig（v0.10.0+）     |  Object | { color: 'rgb(94, 200, 248)',  width: 2 }  | 节点拖拽时新位置的示意连线的样式配置 |
+| dragOpacityConfig（v0.7.2+）     | Object  | { cloneNodeOpacity: 0.5, beingDragNodeOpacity: 0.3 }  | 节点拖拽时的透明度配置，传递一个对象，字段含义分别为：跟随鼠标移动的克隆节点或矩形的透明度、被拖拽节点的透明度 |
+| beforeDragEnd（v0.10.1+）     | null、Function  | null  | 即将拖拽完成前调用该函数，函数接收一个对象作为参数：{overlapNodeUid,prevNodeUid,nextNodeUid,beingDragNodeList}，代表拖拽信息，如果要阻止本次拖拽，那么可以返回true，此时node_dragend事件不会再触发。函数可以是异步函数，返回Promise实例。beingDragNodeList为v0.10.2+新增的回调参数，为当前被拖拽的节点列表 |
+| handleDragCloneNode（v0.10.1+）     | null、Function  | null  | 拖拽单个节点时会克隆被拖拽节点，如果想修改该克隆节点，那么可以通过该选项提供一个处理函数，函数接收克隆节点对象。（需要注意的是节点对象指的是@svgdotjs/svg.js库的元素对象，所以你需要阅读该库的文档来操作该对象） |
+| beforeDragStart（v0.10.2+）     | null、Function（(nodeList) => {}）  | null  | 即将开始拖拽节点前调用该函数，函数接收当前即将被拖拽的节点实例列表作为参数，如果要阻止本次拖拽，那么可以返回true。可以是异步函数，返回一个Promise实例 |
+
+### 5.Watermark插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| watermarkConfig（v0.2.4+）       | Object  |                  | 水印配置，详细配置请参考下方表格【水印配置】                 |
+
+#### 5.1水印配置
 
 | 字段名称    | 类型   | 默认值                                      | 描述                                 |
 | ----------- | ------ | ------------------------------------------- | ------------------------------------ |
@@ -97,14 +238,76 @@ const mindMap = new MindMap({
 | textSpacing | Number | 100                                         | 同一行水印之间的间距                 |
 | angle       | Number | 30                                          | 水印的倾斜角度，范围：[0, 90]        |
 | textStyle   | Object | {color: '#999', opacity: 0.5, fontSize: 14} | 水印文字样式                         |
+| onlyExport（v0.9.2+）   | Boolean | false | 是否仅在导出时添加水印                         |
+| belowNode（v0.10.0+）   | Boolean | false | 水印是否显示在节点下方                         |
 
-### 图标配置
+### 6.AssociativeLine插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| defaultAssociativeLineText（v0.5.11+）     |  String | 关联 |  关联线默认文字 |
+| associativeLineIsAlwaysAboveNode（v0.8.0+）     |  Boolean | true  | 关联线是否始终显示在节点上层，如果设为false，那么创建关联线和激活关联线时处于最顶层，其他情况下处于节点下方 |
+| associativeLineInitPointsPosition（v0.9.5+）     | null / { from, to } | { from: '', to: '' }  | 默认情况下，新创建的关联线两个端点的位置是根据两个节点中心点的相对位置来计算的，如果你想固定位置，可以通过这个选项来配置。from和to都不传，则都自动计算，如果只传一个，另一个则会自动计算。from和to可选值：left、top、bottom、right |
+| enableAdjustAssociativeLinePoints（v0.9.5+）     | Boolean | true  | 是否允许调整关联线两个端点的位置 |
+
+### 7.RichText插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| richTextEditFakeInPlace（v0.6.13+）     | Boolean  | false | 设置富文本节点编辑框和节点大小一致，形成伪原地编辑的效果，需要注意的是，只有当节点内只有文本、且形状是矩形才会有比较好的效果 |
+| enableEditFormulaInRichTextEdit（v0.10.0+）     | Boolean  | true | 是否开启在富文本编辑框中直接编辑数学公式 |
+| transformRichTextOnEnterEdit（v0.10.0+）     | null、Function  | null | 转换富文本内容，可以传递一个函数，当进入富文本编辑时会调用该函数，函数接收即将被编辑的富文本内容，需要返回你处理后的富文本内容 |
+| beforeHideRichTextEdit（v0.10.0+）     | null、Function  | null | 可以传递一个函数，即将结束富文本编辑前会执行该函数，函数接收richText实例，所以你可以在此时机更新quill文档数据 |
+
+### 8.TouchEvent插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| disableTouchZoom（v0.8.1+）     | Boolean | false  | 禁止双指缩放，你仍旧可以使用api进行缩放，对TouchEvent插件生效  |
+| minTouchZoomScale（v0.10.1+）     | Number | 20  | 允许最大和最小的缩放值，百分数，传-1代表不限制  |
+| maxTouchZoomScale（v0.10.1+）     | Number | -1  |  同minTouchZoomScale |
+
+### 9.Scrollbar插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| isLimitMindMapInCanvasWhenHasScrollbar（v0.9.2+）     | Boolean |  true | 当注册了滚动条插件（Scrollbar）时，是否将思维导图限制在画布内，isLimitMindMapInCanvas配置不再起作用 |
+
+### 10.Search插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| isOnlySearchCurrentRenderNodes（v0.9.8+）     | Boolean | false  | 是否仅搜索当前渲染的节点，被收起的节点不会被搜索到 |
+
+### 11.Cooperate插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| beforeCooperateUpdate（v0.9.8+）     | Function、null | null  | 协同编辑时，节点操作即将更新到其他客户端前的生命周期函数。函数接收一个对象作为参数：{ type: 【createOrUpdate（创建节点或更新节点）、delete（删除节点）】, list: 【数组类型，1.当type=createOrUpdate时，代表被创建或被更新的节点数据，即将同步到其他客户端，所以你可以修改该数据；2.当type=delete时，代表被删除的节点数据】 } |
+
+### 12.RainbowLines插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| rainbowLinesConfig（v0.9.9+）     | Object | { open: false, colorsList: [] }  | 彩虹线条配置，需要先注册RainbowLines插件。对象类型，结构：{ open: false【是否开启彩虹线条】, colorsList: []【自定义彩虹线条的颜色列表，如果不设置，会使用默认颜色列表】 } |
+
+### 13.Demonstrate插件
+
+| 字段名称                         | 类型    | 默认值           | 描述                                                         |
+| -------------------------------- | ------- | ---------------- | ------------------------------------------------------------ |
+| demonstrateConfig（v0.9.11+）     | Object、null | null  | 演示插件Demonstrate的配置。不传则使用默认配置，可传递一个对象，如果只配置某个属性，可以只设置该属性，其他没有设置的同样会使用默认配置，完整配置请参考下方【演示插件配置】小节 |
+
+#### 13.1演示插件配置
 
 | 字段名称    | 类型   | 默认值                                      | 描述                                 |
 | ----------- | ------ | ------------------------------------------- | ------------------------------------ |
-| name        | String |                                           | 图标分组的名称 |
-| type        | String |                                           | 图标分组的值 |
-| list        | Array  |                                           | 分组下的图标列表，数组的每一项为一个对象，`{ name: '', icon: '' }`，`name`代表图标的名称，`icon`代表图标，可以是`svg`图标，比如`<svg ...><path></path></svg>`，也可以是图片`url`，或者是`base64`图标，比如`data:image/png;base64,...` |
+| boxShadowColor | String  | rgba(0, 0, 0, 0.8)  | 高亮框四周区域的颜色 |
+| borderRadius   | String  | 5px                 | 高亮框的圆角大小 |
+| transition     | String  | all 0.3s ease-out   | 高亮框动画的过渡属性，CSS的transition属性 |
+| zIndex         | Number  | 9999                | 高亮框元素的层级 |
+| padding        | Number  | 20                  | 高亮框的内边距 |
+| margin         | Number  | 50                  | 高亮框的外边距 |
+| openBlankMode（v0.9.12+） | Boolean | true     | 是否开启填空模式，即带下划线的文本默认不显示，按回车键才依次显示 |
 
 ## 静态方法
 
@@ -161,7 +364,105 @@ mindMap.setTheme('主题名称')
 
 当前注册的所有插件列表。
 
+## 实例属性
+
+### el
+
+容器元素。
+
+### opt
+
+配置选项对象。
+
+### svg
+
+> @svgdotjs/svg.js库调用SVG()方法返回的节点实例
+
+画布svg元素。
+
+### draw
+
+> @svgdotjs/svg.js库调用group()方法返回的节点实例
+>
+> svg节点的子节点
+
+容器元素，用于承载节点、连线等内容。
+
+### lineDraw
+
+> v0.8.0+
+>
+> @svgdotjs/svg.js库调用group()方法返回的节点实例
+>
+> draw节点的子节点
+
+节点连线元素的容器。
+
+### nodeDraw
+
+> v0.8.0+
+>
+> @svgdotjs/svg.js库调用group()方法返回的节点实例
+>
+> draw节点的子节点
+
+节点元素的容器。
+
+### associativeLineDraw
+
+> v0.8.0+
+>
+> @svgdotjs/svg.js库调用group()方法返回的节点实例
+>
+> 在注册了关联线插件的情况下可用
+>
+> draw节点的子节点
+
+关联线内容的容器。
+
+### otherDraw
+
+> v0.8.0+
+>
+> @svgdotjs/svg.js库调用group()方法返回的节点实例
+>
+> draw节点的子节点
+
+其他内容的容器。
+
+### elRect
+
+容器元素`el`的尺寸、位置信息。调用`getBoundingClientRect()`方法的返回结果。
+
+### width
+
+容器元素`el`的宽度。
+
+### height
+
+容器元素`el`的高度。
+
+### themeConfig
+
+当前主题配置。
+
 ## 实例方法
+
+### getElRectInfo()
+
+更新容器元素的位置和大小信息。当容器元素在页面中的位置发生了改变之后务必调用该方法更新信息。如果容器元素大小也发生了改变，那么请调用`resize`方法。
+
+### updateData(data)
+
+> v0.9.9+
+
+更新画布数据，如果新的数据是在当前画布节点数据基础上增删改查后形成的，那么可以使用该方法来更新画布数据。性能会更好，不会重新创建所有节点，而是会尽可能的复用。
+
+### clearDraw()
+
+> v0.8.0+
+
+清空`lineDraw`、`associativeLineDraw`、`nodeDraw`、`otherDraw`容器。
 
 ### destroy()
 
@@ -169,13 +470,21 @@ mindMap.setTheme('主题名称')
 
 销毁思维导图。会移除注册的插件、移除监听的事件、删除画布的所有节点。
 
-### getSvgData({ paddingX = 0, paddingY = 0 })
+### getSvgData({ paddingX = 0, paddingY = 0, ignoreWatermark = false, addContentToHeader, addContentToFooter, node })
 
 > v0.3.0+
 
 `paddingX`：水平内边距
 
 `paddingY`：垂直内边距
+
+`ignoreWatermark`：v0.8.0+，不要绘制水印，如果不需要绘制水印的场景可以传`true`，因为绘制水印非常慢
+
+`addContentToHeader`：v0.9.9+，Function，可以返回要追加到头部的自定义内容，详细介绍见【实例化选项】中的该配置
+
+`addContentToFooter`：v0.9.9+，Function，可以返回要追加到尾部的自定义内容，详细介绍见【实例化选项】中的该配置
+
+`node`: v0.9.11+, 节点实例，如果传了，那么仅导出该节点的内容
 
 获取`svg`数据，返回一个对象，详细结构如下：
 
@@ -188,6 +497,7 @@ mindMap.setTheme('主题名称')
   origHeight, // Number，画布高度
   scaleX, // Number，思维导图图形的水平缩放值
   scaleY, // Number，思维导图图形的垂直缩放值
+  clipData// v0.9.11+，如果传了node，即导出指定节点的内容，那么会返回该字段，代表从完整的图片中裁剪出该节点区域的位置坐标数据
 }
 ```
 
@@ -230,7 +540,7 @@ mindMap.setTheme('主题名称')
 | mousemove                        | el元素的鼠标移动事件                       | e（事件对象）、this（Event事件类实例）                       |
 | drag                             | 如果是按住左键拖动的话会触发拖动事件       | e（事件对象）、this（Event事件类实例）                       |
 | mouseup                          | el元素的鼠标松开事件                       | e（事件对象）、this（Event事件类实例）                       |
-| mousewheel                       | 鼠标滚动事件                               | e（事件对象）、dir（向上up还是向下down滚动）、this（Event事件类实例）、isTouchPad（v0.6.1+，是否是触控板触发的事件） |
+| mousewheel                       | 鼠标滚动事件                               | e（事件对象）、dir（向上up还是向下down滚动。v0.9.2+已改为dirs，数组类型，即支持同时保存多个方向）、this（Event事件类实例）、isTouchPad（v0.6.1+，是否是触控板触发的事件） |
 | contextmenu                      | svg画布的鼠标右键菜单事件                  | e（事件对象）                                                |
 | node_click                       | 节点的单击事件                             | this（节点实例）、e（事件对象）                              |
 | node_mousedown                   | 节点的鼠标按下事件                         | this（节点实例）、e（事件对象）                              |
@@ -243,13 +553,15 @@ mindMap.setTheme('主题名称')
 | node_active                      | 节点激活事件                               | this（节点实例）、activeNodeList（当前激活的所有节点列表）   |
 | expand_btn_click                 | 节点展开或收缩事件                         | this（节点实例）                                             |
 | before_show_text_edit            | 节点文本编辑框即将打开事件                 |                                                              |
-| hide_text_edit                   | 节点文本编辑框关闭事件                     | textEditNode（文本编辑框DOM节点）、activeNodeList（当前激活的所有节点列表） |
-| scale                            | 放大缩小事件                               | scale（缩放比例）                                            |
+| hide_text_edit                   | 节点文本编辑框关闭事件【关联线的文本编辑结束也会触发该事件，此时没有回调参数，所以需要做好防御性编程】                     | textEditNode（文本编辑框DOM节点）、activeNodeList（当前激活的所有节点列表）、node（v0.10.2+，当前文本编辑的节点实例） |
+| scale                            | 画布放大缩小事件                               | scale（缩放比例）                                            |
+| translate（v0.9.10+）               | 画布移动事件              | x（水平位移）、y（垂直位移）                     |
 | node_img_dblclick（v0.2.15+）    | 节点内图片的双击事件                       | this（节点实例）、e（事件对象）                              |
 | node_img_mouseenter（v0.6.5+）    |  节点内图片的鼠标移入事件                      | this（节点实例）、imgNode（图片节点）、e（事件对象）                              |
 | node_img_mouseleave（v0.6.5+）    |  节点内图片的鼠标移出事件                      | this（节点实例）、imgNode（图片节点）、e（事件对象）                              |
 | node_img_mousemove（v0.6.5+）    |  节点内图片的鼠标移动事件                      | this（节点实例）、imgNode（图片节点）、e（事件对象）                              |
-| node_tree_render_end（v0.2.16+） | 节点树渲染完毕事件                         |                                                              |
+| node_tree_render_end（v0.2.16+） | 节点树渲染完毕事件   |           |
+| node_tree_render_start（v0.10.0+） | 节点树开始渲染事件   |           |
 | rich_text_selection_change（v0.4.0+）         |  当注册了`RichText`插件时可用。当节点编辑时，文本选区发生改变时触发         |  hasRange（是否存在选区）、rectInfo（选区的尺寸和位置信息）、formatInfo（选区的文本格式化信息）            |
 | transforming-dom-to-images（v0.4.0+）         |  当注册了`RichText`插件时可用。当`svg`中存在`DOM`节点时，导出为图片时会将`DOM`节点转换为图片，转换过程中会触发该事件，可用通过该事件给用户提示，告知目前转换到的节点         |  index（当前转换到的节点索引）、len（一共需要转换的节点数量）            |
 | node_dragging（v0.4.5+）    | 当某个节点被拖拽时触发   |  node（当前被拖拽的节点）           |
@@ -257,8 +569,26 @@ mindMap.setTheme('主题名称')
 | associative_line_click（v0.4.5+）    |  点击某条关联线时触发  |  path（连接线节点）、clickPath（不可见的点击线节点）、node（起始节点）、toNode（目标节点）           |
 | svg_mouseenter（v0.5.1+）    | 鼠标移入svg画布时触发   | e（事件对象）  |
 | svg_mouseleave（v0.5.1+）    | 鼠标移出svg画布时触发   | e（事件对象）  |
-| node_icon_click（v0.6.10+）    | 点击节点内的图标时触发   | this（节点实例）、item（点击的图标名称）、e（事件对象）  |
+| node_icon_click（v0.6.10+）    | 点击节点内的图标时触发   | this（节点实例）、item（点击的图标名称）、e（事件对象）、node(图标节点，v0.9.9+)  |
+| node_icon_mouseenter（v0.9.9+）    |  鼠标移入节点内的图标时触发  | this（节点实例）、item（点击的图标名称）、e（事件对象）、node(图标节点)  |
+| node_icon_mouseleave（v0.9.9+）    |  鼠标移出节点内的图标时触发  | this（节点实例）、item（点击的图标名称）、e（事件对象）、node(图标节点)  |
 | view_theme_change（v0.6.12+）    | 调用了setTheme方法设置主题后触发   | theme（设置的新主题名称）  |
+| set_data（v0.7.3+）    | 调用了setData方法动态设置思维导图数据时触发   | data（新的思维导图数据）  |
+| resize（v0.8.0+）    |  容器尺寸改变后触发，实际上是当思维导图实例的`resize`方法被调用后触发  |   |
+| beforeDestroy（v0.9.0+）    |  思维导图销毁前触发，即调用了destroy方法触发  |   |
+| body_mousedown（v0.9.2+）    | document.body的鼠标按下事件                      | e（事件对象）      |
+| body_click    | document.body的点击事件                      | e（事件对象）      |
+| data_change_detail（v0.9.3+）    |  渲染树数据变化的明细，会返回一个数组，每一项代表一个更新点，每一项都是一个对象，存在一个`type`属性，代表明细的类型，包含`create`（创建节点）、`update`（更新节点）、`delete`（删除节点），存在一个`data`属性，代表当前更新的节点数据，如果是`update`类型，还会存在一个`oldData`属性，保存了更新前该节点的数据  | arr（明细数据）      |
+| layout_change（v0.9.4+）    | 修改结构时触发，即调用了mindMap.setLayout()方法时触发  | layout（新的结构）      |
+| node_cooperate_avatar_click（v0.9.9+）    | 协同编辑时，鼠标点击人员头像时触发  |  userInfo(人员信息)、 this(当前节点实例)、 node(头像节点)、 e(事件对象)      |
+| node_cooperate_avatar_mouseenter（v0.9.9+）    | 协同编辑时，鼠标移入人员头像时触发  |  userInfo(人员信息)、 this(当前节点实例)、 node(头像节点)、 e(事件对象)     |
+| node_cooperate_avatar_mouseleave（v0.9.9+）    | 协同编辑时，鼠标移除人员头像时触发  |  userInfo(人员信息)、 this(当前节点实例)、 node(头像节点)、 e(事件对象)      |
+| exit_demonstrate（v0.9.11+）    | 退出演示模式时触发  |     |
+| demonstrate_jump（v0.9.11+）    | 演示模式中，切换步骤时触发  |  currentStepIndex（当前播放到的步骤索引，从0开始计数）、stepLength（总的播放步骤数量）   |
+| node_tag_click（v0.9.12+）    | 节点标签的点击事件 | this(当前节点实例)、item（点击的标签内容）    |
+| node_layout_end（v0.10.1+）    | 单个节点内容布局完成的事件 | this(当前节点实例)  |
+| node_attachmentClick（v0.9.10+）    | 节点附件图标的点击事件 | this(当前节点实例)、e（事件对象）、node（图标节点）  |
+| node_attachmentContextmenu（v0.9.10+）    | 节点附件图标的右键点击事件 | this(当前节点实例)、e（事件对象）、node（图标节点）  |
 
 ### emit(event, ...args)
 
@@ -268,7 +598,9 @@ mindMap.setTheme('主题名称')
 
 解绑事件
 
-### setTheme(theme)
+### setTheme(theme, notRender = false)
+
+- `notRender`：v0.8.0+，是否不要调用render方法更新画布。
 
 切换主题，可选主题见上面的选项表格
 
@@ -276,7 +608,9 @@ mindMap.setTheme('主题名称')
 
 获取当前主题
 
-### setThemeConfig(config)
+### setThemeConfig(config, notRender = false)
+
+- `notRender`：v0.8.0+，是否不要调用render方法更新画布。
 
 设置主题配置，`config`同上面选项表格里的选项`themeConfig`
 
@@ -316,7 +650,9 @@ mindMap.updateConfig({
 
 获取当前的布局结构
 
-### setLayout(layout)
+### setLayout(layout, notRender = false)
+
+- `notRender`：v0.8.0+，是否不要调用render方法更新画布。
 
 设置布局结构，可选值见上面选项表格的`layout`字段
 
@@ -329,7 +665,7 @@ mindMap.updateConfig({
 | SELECT_ALL                          | 全选                                                         |                                                              |
 | BACK                                | 回退指定的步数                                               | step（要回退的步数，默认为1）                                |
 | FORWARD                             | 前进指定的步数                                               | step（要前进的步数，默认为1）                                |
-| INSERT_NODE                         | 插入同级节点，操作节点为当前激活的节点或指定节点，如果有多个激活节点，只会对第一个有效 | openEdit（v0.4.6+，是否激活新插入的节点并进入编辑模式，默认为`true`）、 appointNodes（v0.4.7+，可选，指定节点，指定多个节点可以传一个数组）、 appointData（可选，指定新创建节点的数据，比如{text: 'xxx', ...}，详细结构可以参考[exampleData.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/example/exampleData.js)）、 appointChildren（v0.6.14+，可选，指定新创建节点的子节点，数组类型）     |
+| INSERT_NODE                         | 插入同级节点，操作节点为当前激活的节点或指定节点，如果有多个激活节点，只会对第一个有效（v0.7.2+支持对多个激活节点同时插入兄弟节点） | openEdit（v0.4.6+，是否激活新插入的节点并进入编辑模式，默认为`true`）、 appointNodes（v0.4.7+，可选，指定要插入兄弟节点的节点，指定多个节点可以传一个数组）、 appointData（可选，指定新创建节点的数据，比如{text: 'xxx', ...}，详细结构可以参考[exampleData.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/example/exampleData.js)）、 appointChildren（v0.6.14+，可选，指定新创建节点的子节点，数组类型）     |
 | INSERT_CHILD_NODE                   | 插入子节点，操作节点为当前激活的节点或指定节点                         |   openEdit（v0.4.6+，是否激活新插入的节点并进入编辑模式，默认为`true`）、 appointNodes（v0.4.7+，可选，指定节点，指定多个节点可以传一个数组）、 appointData（可选，指定新创建节点的数据，比如{text: 'xxx', ...}，详细结构可以参考[exampleData.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/example/exampleData.js)）、 appointChildren（v0.6.14+，可选，指定新创建节点的子节点，数组类型）                                                          |
 | UP_NODE                             | 上移节点，操作节点为当前激活的节点，如果有多个激活节点，只会对第一个有效，对根节点或在列表里的第一个节点使用无效 |                                                              |
 | DOWN_NODE                           | 操作节点为当前激活的节点，如果有多个激活节点，只会对第一个有效，对根节点或在列表里的最后一个节点使用无效 |                                                              |
@@ -342,30 +678,39 @@ mindMap.updateConfig({
 | CLEAR_ACTIVE_NODE                   | 清除当前已激活节点的激活状态，操作节点为当前激活的节点       |                                                              |
 | SET_NODE_EXPAND                     | 设置节点是否展开                                             | node（要设置的节点）、expand（布尔值，是否展开）             |
 | EXPAND_ALL                          | 展开所有节点                                                 |                                                              |
-| UNEXPAND_ALL                        | 收起所有节点                                                 |                                                              |
+| UNEXPAND_ALL                        | 收起所有节点       | isSetRootNodeCenter（v0.9.11+，默认为true，收起所有节点后是否将根节点移至中心） |
 | UNEXPAND_TO_LEVEL（v0.2.8+）        | 展开到指定层级                                               | level（要展开到的层级，1、2、3...）                          |
-| SET_NODE_DATA                       | 更新节点数据，即更新节点数据对象里`data`对象的数据           | node（要设置的节点）、data（对象，要更新的数据，如`{expand: true}`） |
+| SET_NODE_DATA                       | 更新节点数据，即更新节点数据对象里`data`对象的数据，注意这个命令不会触发视图的更新           | node（要设置的节点）、data（对象，要更新的数据，如`{expand: true}`） |
 | SET_NODE_TEXT                       | 设置节点文本                                                 | node（要设置的节点）、text（要设置的文本字符串，换行可以使用`\n`）、richText（v0.4.0+，如果要设置的是富文本字符，需要设为`true`）、resetRichText（v0.6.10+是否要复位富文本，默认为false，如果传true那么会重置富文本节点的样式） |
 | SET_NODE_IMAGE                      | 设置节点图片                                                 | node（要设置的节点）、imgData（对象，图片信息，结构为：`{url, title, width, height}`，图片的宽高必须要传） |
 | SET_NODE_ICON                       | 设置节点图标                                                 | node（要设置的节点）、icons（数组，预定义的图片名称组成的数组，可用图标可在[icons.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/src/svg/icons.js)文件里的`nodeIconList`列表里获取到，图标名称为`type_name`，如`['priority_1']`） |
 | SET_NODE_HYPERLINK                  | 设置节点超链接                                               | node（要设置的节点）、link（超链接地址）、title（超链接名称，可选） |
 | SET_NODE_NOTE                       | 设置节点备注                                                 | node（要设置的节点）、note（备注文字）                       |
+| SET_NODE_ATTACHMENT（v0.9.10+）                       | 设置节点附件                                                 | node（要设置的节点）、url（附件url）、name（附件名称，可选）                       |
 | SET_NODE_TAG                        | 设置节点标签                                                 | node（要设置的节点）、tag（字符串数组，内置颜色信息可在[constant.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/src/constants/constant.js)里获取到） |
-| INSERT_AFTER（v0.1.5+）             | 将节点移动到另一个节点的后面                                 | node（要移动的节点）、 exist（目标节点）                     |
-| INSERT_BEFORE（v0.1.5+）            | 将节点移动到另一个节点的前面                                 | node（要移动的节点）、 exist（目标节点）                     |
-| MOVE_NODE_TO（v0.1.5+）             | 移动一个节点作为另一个节点的子节点                           | node（要移动的节点）、 toNode（目标节点）                    |
-| ADD_GENERALIZATION（v0.2.0+）       | 添加节点概要                                                 | data（概要的数据，对象格式，节点的数字段都支持，默认为{text: '概要'}） |
+| INSERT_AFTER（v0.1.5+）             | 将节点移动到另一个节点的后面    | node（要移动的节点，（v0.7.2+支持传递节点数组实现同时移动多个节点））、 exist（目标节点）                     |
+| INSERT_BEFORE（v0.1.5+）            | 将节点移动到另一个节点的前面，（v0.7.2+支持传递节点数组实现同时移动多个节点）   | node（要移动的节点）、 exist（目标节点）                     |
+| MOVE_NODE_TO（v0.1.5+）             | 移动节点作为另一个节点的子节点，（v0.7.2+支持传递节点数组实现同时移动多个节点）   | node（要移动的节点）、 toNode（目标节点）                    |
+| ADD_GENERALIZATION（v0.2.0+）       | 添加节点概要                                                 | data（概要的数据，对象格式，节点的数字段都支持，默认为{text: '概要'}）、openEdit（v0.9.11+，默认为true，是否默认进入文本编辑状态） |
 | REMOVE_GENERALIZATION（v0.2.0+）    | 删除节点概要                                                 |                                                              |
 | SET_NODE_CUSTOM_POSITION（v0.2.0+） | 设置节点自定义位置                                           | node（要设置的节点）、 left（自定义的x坐标，默认为undefined）、 top（自定义的y坐标，默认为undefined） |
 | RESET_LAYOUT（v0.2.0+）             | 一键整理布局                                                 |                                                              |
 | SET_NODE_SHAPE（v0.2.4+）           | 设置节点形状                                                 | node（要设置的节点）、shape（形状，全部形状：[Shape.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/src/core/render/node/Shape.js)） |
-| GO_TARGET_NODE（v0.6.7+）           |  定位到某个节点，如果该节点被收起，那么会自动展开到该节点   | node（要定位到的节点实例或节点uid）、callback（v0.6.9+，定位完成后的回调函数） |
+| GO_TARGET_NODE（v0.6.7+）           |  定位到某个节点，如果该节点被收起，那么会自动展开到该节点   | node（要定位到的节点实例或节点uid）、callback（v0.6.9+，定位完成后的回调函数，v0.9.8+接收一个参数，代表目标节点实例） |
+| INSERT_MULTI_NODE（v0.7.2+）           |  给指定的节点同时插入多个同级节点，操作节点为当前激活的节点或指定节点   | appointNodes（可选，指定节点，指定多个节点可以传一个数组）, nodeList（新插入节点的数据列表，数组类型） |
+| INSERT_MULTI_CHILD_NODE（v0.7.2+）           |  给指定的节点同时插入多个子节点，操作节点为当前激活的节点或指定节点   | appointNodes（可选，指定节点，指定多个节点可以传一个数组）, childList（新插入节点的数据列表，数组类型） |
+| INSERT_FORMULA（v0.7.2+）           |  给节点插入数学公式，操作节点为当前激活的节点或指定节点   | formula（要插入的数学公式，LaTeX 语法）, appointNodes（可选，指定要插入公式的节点，多个节点可以传数组，否则默认为当前激活的节点） |
+| INSERT_PARENT_NODE（v0.8.0+）           |  给指定的节点插入父节点，操作节点为当前激活的节点或指定节点   | openEdit（是否激活新插入的节点并进入编辑模式，默认为`true`）、 appointNodes（可选，指定要插入父节点的节点，指定多个节点可以传一个数组）、 appointData（可选，指定新创建节点的数据，比如{text: 'xxx', ...}，详细结构可以参考[exampleData.js](https://github.com/wanglin2/mind-map/blob/main/simple-mind-map/example/exampleData.js)） |
+| REMOVE_CURRENT_NODE（v0.8.0+）           |   仅删除当前节点，操作节点为当前激活的节点或指定节点   | appointNodes（可选，指定要删除的节点，指定多个节点可以传一个数组） |
+| MOVE_UP_ONE_LEVEL（v0.9.6+）           |  将指定节点上移一个层级    | node（可选，指定要上移层级的节点，不传则为当前激活节点中的第一个） |
+| REMOVE_CUSTOM_STYLES（v0.9.7+）           |  一键去除某个节点的自定义样式    | node（可选，指定要清除自定义样式的节点，不传则为当前激活节点中的第一个） |
+| REMOVE_ALL_NODE_CUSTOM_STYLES（v0.9.7+）           |  一键去除多个节点或所有节点的自定义样式    | appointNodes（可选，节点实例数组，指定要去除自定义样式的多个节点，如果不传则会去除当前画布所有节点的自定义样式） |
 
 ### setData(data)
 
 动态设置思维导图数据，纯节点数据
 
-`data`：思维导图结构数据
+`data`：思维导图结构数据。v0.9.9+支持传空对象或者null，画布会显示空白。
 
 ### setFullData(*data*)
 

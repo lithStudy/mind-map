@@ -10,6 +10,8 @@
 
 缩放思维导图至适应画布。
 
+注意该方法不能在`setData`、`setFullData`方法调用后立即调用，需要监听`node_tree_render_end`事件调用`fit`。
+
 ### translateX(step)
 
 `x`方向进行平移，`step`：要平移的像素
@@ -65,6 +67,8 @@
 ### setScale(scale, cx, cy)
 
 > v0.2.17+
+
+- `scale`: 缩放数值，未缩放为`1`，小于为`1`缩小，大于`1`为放大
 
 - `cx`：（v0.6.4+）以画布指定位置进行缩放，默认为画布中心点
 

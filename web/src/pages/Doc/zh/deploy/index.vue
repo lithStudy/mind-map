@@ -40,7 +40,7 @@ npm link simple-mind-map
 <p>不过这需要后台支持，因为我们的应用是个单页客户端应用，如果后台没有正确的配置，当用户在浏览器直接访问子路由时会返回404，所以呢你要在服务端增加一个覆盖所有情况的候选资源：如果<code>URL</code>匹配不到任何静态资源，则应该返回同一个<code>index.html</code>页面。</p>
 <h2>Docker</h2>
 <blockquote>
-<p>非常感谢<a href="https://github.com/shuiche-it">水车</a>，本小节由他编写，对应的 Docker 包也由他维护。</p>
+<p>非常感谢<a href="https://github.com/shuiche-it">水车</a>维护的<code>Docker</code>镜像。</p>
 </blockquote>
 <p>直接从 Docker hup 中安装：</p>
 <pre class="hljs"><code>docker run -d -p 8081:8080 shuiche/mind-map:latest
@@ -48,6 +48,7 @@ npm link simple-mind-map
 <p>mind-map在容器中启动了8080端口作为web服务入口，通过docker运行容器时，需要指定本地映射端口，上面案例中，我们通过本地的8081端口映射到容器端口8080。</p>
 <p>安装完成后，通过 <code>docker ps</code> 查看容器运行状态。</p>
 <p>浏览器打开 127.0.0.1:8081 即可使用Web 思维导图功能。</p>
+<p><a href="https://laosu.gq/2023/09/02/%E5%BC%BA%E5%A4%A7%E7%9A%84%E6%80%9D%E7%BB%B4%E5%AF%BC%E5%9B%BE%E5%BA%93SimpleMindMap/">在群晖上以 Docker 方式安装</a></p>
 <h2>对接自己的存储服务</h2>
 <p>应用数据默认存储在浏览器本地，浏览器本地存储容量是比较小的，所以当在思维导图中插入更多图片后很容易触发限制，所以更好的选择是对接你自己的存储服务，这通常有两种方式：</p>
 <h3>第一种</h3>

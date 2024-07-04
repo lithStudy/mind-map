@@ -1,5 +1,5 @@
 import Base from './Base'
-import { walk, asyncRun } from '../utils'
+import { walk, asyncRun, getNodeIndexInNodeList } from '../utils'
 import { CONSTANTS } from '../constants/constant'
 
 //  竖向时间轴
@@ -97,11 +97,7 @@ class VerticalTimeline extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex, index) => {
-        if (
-          node.nodeData.data.expand &&
-          node.children &&
-          node.children.length
-        ) {
+        if (node.getData('expand') && node.children && node.children.length) {
           let marginY = this.getMarginY(layerIndex + 1)
           // 定位二级节点的top
           if (isRoot) {
@@ -135,7 +131,7 @@ class VerticalTimeline extends Base {
       this.root,
       null,
       (node, parent, isRoot, layerIndex) => {
-        if (!node.nodeData.data.expand) {
+        if (!node.getData('expand')) {
           return
         }
         if (isRoot) return
@@ -155,14 +151,12 @@ class VerticalTimeline extends Base {
   updateBrothers(node, addHeight) {
     if (node.parent) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         // 自定义节点位置
         if (item.hasCustomPosition()) return
         // 三级或三级以下节点自身位置不需要动
-        if (!node.parent.isRoot && item === node) return
+        if (!node.parent.isRoot && item.uid === node.uid) return
         let _offset = 0
         // 二级节点上面的兄弟节点不需要移动，自身需要往下移动
         if (node.parent.isRoot) {
@@ -201,9 +195,7 @@ class VerticalTimeline extends Base {
   updateBrothersTop(node, addHeight) {
     if (node.parent && !node.parent.isRoot) {
       let childrenList = node.parent.children
-      let index = childrenList.findIndex(item => {
-        return item === node
-      })
+      let index = getNodeIndexInNodeList(node, childrenList)
       childrenList.forEach((item, _index) => {
         if (item.hasCustomPosition()) {
           // 适配自定义位置
@@ -254,8 +246,7 @@ class VerticalTimeline extends Base {
         let y2 = item.top
         let x = node.left + node.width / 2
         let path = `M ${x},${y1} L ${x},${y2}`
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
         prevBother = item
       })
     } else {
@@ -268,13 +259,13 @@ class VerticalTimeline extends Base {
         node.children.forEach((item, index) => {
           let itemLeft = item.left
           let itemYCenter = item.top + item.height / 2
-          let path = `
-            M ${nodeRight},${nodeYCenter} 
-            L ${nodeRight + offset},${nodeYCenter} 
-            L ${nodeRight + offset},${itemYCenter} 
-            L ${itemLeft},${itemYCenter}`
-          lines[index].plot(path)
-          style && style(lines[index], item)
+          let path = this.createFoldLine([
+            [nodeRight, nodeYCenter],
+            [nodeRight + offset, nodeYCenter],
+            [nodeRight + offset, itemYCenter],
+            [itemLeft, itemYCenter]
+          ])
+          this.setLineStyle(style, lines[index], path, item)
         })
       } else {
         let nodeLeft = node.left
@@ -284,13 +275,13 @@ class VerticalTimeline extends Base {
         node.children.forEach((item, index) => {
           let itemRight = item.left + item.width
           let itemYCenter = item.top + item.height / 2
-          let path = `
-            M ${nodeLeft},${nodeYCenter} 
-            L ${nodeLeft - offset},${nodeYCenter} 
-            L ${nodeLeft - offset},${itemYCenter} 
-            L ${itemRight},${itemYCenter}`
-          lines[index].plot(path)
-          style && style(lines[index], item)
+          let path = this.createFoldLine([
+            [nodeLeft, nodeYCenter],
+            [nodeLeft - offset, nodeYCenter],
+            [nodeLeft - offset, itemYCenter],
+            [itemRight, itemYCenter]
+          ])
+          this.setLineStyle(style, lines[index], path, item)
         })
       }
     }
@@ -314,8 +305,7 @@ class VerticalTimeline extends Base {
           let y2 = item.top
           let x = node.left + node.width / 2
           let path = `M ${x},${y1} L ${x},${y2}`
-          lines[index].plot(path)
-          style && style(lines[index], item)
+          this.setLineStyle(style, lines[index], path, item)
           prevBother = item
         })
       } else {
@@ -330,8 +320,7 @@ class VerticalTimeline extends Base {
             : item.left
         let y2 = item.top + item.height / 2
         let path = `M ${x1},${y1} L ${x2},${y2}`
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
       }
     })
   }
@@ -354,8 +343,7 @@ class VerticalTimeline extends Base {
           let y2 = item.top
           let x = node.left + node.width / 2
           let path = `M ${x},${y1} L ${x},${y2}`
-          lines[index].plot(path)
-          style && style(lines[index], item)
+          this.setLineStyle(style, lines[index], path, item)
           prevBother = item
         })
       } else {
@@ -370,8 +358,7 @@ class VerticalTimeline extends Base {
             : item.left
         let y2 = item.top + item.height / 2
         let path = this.cubicBezierPath(x1, y1, x2, y2)
-        lines[index].plot(path)
-        style && style(lines[index], item)
+        this.setLineStyle(style, lines[index], path, item)
       }
     })
   }
@@ -390,32 +377,35 @@ class VerticalTimeline extends Base {
   }
 
   //  创建概要节点
-  renderGeneralization(node, gLine, gNode) {
-    let isLeft = node.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
-    let {
-      top,
-      bottom,
-      left,
-      right,
-      generalizationLineMargin,
-      generalizationNodeMargin
-    } = this.getNodeBoundaries(node, 'h', isLeft)
-    let x = isLeft
-      ? left - generalizationLineMargin
-      : right + generalizationLineMargin
-    let x1 = x
-    let y1 = top
-    let x2 = x
-    let y2 = bottom
-    let cx = x1 + (isLeft ? -20 : 20)
-    let cy = y1 + (y2 - y1) / 2
-    let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
-    gLine.plot(path)
-    gNode.left =
-      x +
-      (isLeft ? -generalizationNodeMargin : generalizationNodeMargin) -
-      (isLeft ? gNode.width : 0)
-    gNode.top = top + (bottom - top - gNode.height) / 2
+  renderGeneralization(list) {
+    list.forEach(item => {
+      let isLeft = item.node.dir === CONSTANTS.LAYOUT_GROW_DIR.LEFT
+      let {
+        top,
+        bottom,
+        left,
+        right,
+        generalizationLineMargin,
+        generalizationNodeMargin
+      } = this.getNodeGeneralizationRenderBoundaries(item, 'h')
+      let x = isLeft
+        ? left - generalizationLineMargin
+        : right + generalizationLineMargin
+      let x1 = x
+      let y1 = top
+      let x2 = x
+      let y2 = bottom
+      let cx = x1 + (isLeft ? -20 : 20)
+      let cy = y1 + (y2 - y1) / 2
+      let path = `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`
+      item.generalizationLine.plot(this.transformPath(path))
+      item.generalizationNode.left =
+        x +
+        (isLeft ? -generalizationNodeMargin : generalizationNodeMargin) -
+        (isLeft ? item.generalizationNode.width : 0)
+      item.generalizationNode.top =
+        top + (bottom - top - item.generalizationNode.height) / 2
+    })
   }
 
   // 渲染展开收起按钮的隐藏占位元素

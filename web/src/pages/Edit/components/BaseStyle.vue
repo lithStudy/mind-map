@@ -148,7 +148,8 @@
         </div>
       </div>
       <div class="row">
-        <div class="rowItem">
+        <!-- 线宽 -->
+        <div class="rowItem" v-if="lineStyleListShow.length > 1">
           <span class="name">{{ $t('baseStyle.style') }}</span>
           <el-select
             size="mini"
@@ -162,7 +163,7 @@
             "
           >
             <el-option
-              v-for="item in lineStyleList"
+              v-for="item in lineStyleListShow"
               :key="item.value"
               :label="item.name"
               :value="item.value"
@@ -176,7 +177,13 @@
             </el-option>
           </el-select>
         </div>
-        <div class="rowItem" v-if="style.lineStyle === 'curve'">
+        <!-- 根节点连线样式 -->
+        <div
+          class="rowItem"
+          v-if="
+            style.lineStyle === 'curve' && showRootLineKeepSameInCurveLayouts
+          "
+        >
           <span class="name">{{ $t('baseStyle.rootStyle') }}</span>
           <el-select
             size="mini"
@@ -197,6 +204,117 @@
             >
             </el-option>
           </el-select>
+        </div>
+        <div class="rowItem" v-if="showLineRadius">
+          <!-- 连线圆角大小 -->
+          <span class="name">{{ $t('baseStyle.lineRadius') }}</span>
+          <el-select
+            size="mini"
+            style="width: 80px"
+            v-model="style.lineRadius"
+            placeholder=""
+            @change="
+              value => {
+                update('lineRadius', value)
+              }
+            "
+          >
+            <el-option
+              v-for="item in [0, 2, 5, 7, 10, 12, 15]"
+              :key="item"
+              :label="item"
+              :value="item"
+            >
+            </el-option>
+          </el-select>
+        </div>
+      </div>
+      <div class="row">
+        <!-- 根节点连线起始位置 -->
+        <div
+          class="rowItem"
+          v-if="
+            style.lineStyle === 'curve' && showRootLineKeepSameInCurveLayouts
+          "
+        >
+          <span class="name">{{ $t('baseStyle.rootLineStartPos') }}</span>
+          <el-select
+            size="mini"
+            style="width: 80px"
+            v-model="style.rootLineStartPositionKeepSameInCurve"
+            placeholder=""
+            @change="
+              value => {
+                update('rootLineStartPositionKeepSameInCurve', value)
+              }
+            "
+          >
+            <el-option
+              key="center"
+              :label="$t('baseStyle.center')"
+              :value="false"
+            >
+            </el-option>
+            <el-option key="right" :label="$t('baseStyle.edge')" :value="true">
+            </el-option>
+          </el-select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="rowItem">
+          <el-checkbox
+            v-model="style.showLineMarker"
+            @change="
+              value => {
+                update('showLineMarker', value)
+              }
+            "
+            >{{ $t('baseStyle.showArrow') }}</el-checkbox
+          >
+        </div>
+      </div>
+      <!-- 彩虹线条 -->
+      <div class="title noTop">{{ $t('baseStyle.rainbowLines') }}</div>
+      <div class="row">
+        <div class="rowItem">
+          <el-popover
+            placement="right"
+            trigger="click"
+            v-model="rainbowLinesPopoverVisible"
+          >
+            <div class="rainbowLinesOptionsBox" :class="{ isDark: isDark }">
+              <div
+                class="optionItem"
+                v-for="item in rainbowLinesOptions"
+                :key="item.value"
+              >
+                <div
+                  class="colorsBar"
+                  v-if="item.list"
+                  @click="updateRainbowLinesConfig(item)"
+                >
+                  <span
+                    class="colorItem"
+                    v-for="color in item.list"
+                    :style="{ backgroundColor: color }"
+                  ></span>
+                </div>
+                <span v-else @click="updateRainbowLinesConfig(item)">{{
+                  $t('baseStyle.notUseRainbowLines')
+                }}</span>
+              </div>
+            </div>
+            <div slot="reference" class="curRainbowLine">
+              <div class="colorsBar" v-if="curRainbowLineColorList">
+                <span
+                  class="colorItem"
+                  v-for="color in curRainbowLineColorList"
+                  :style="{ backgroundColor: color }"
+                ></span>
+              </div>
+              <span v-else>{{ $t('baseStyle.notUseRainbowLines') }}</span>
+            </div>
+          </el-popover>
         </div>
       </div>
       <!-- 概要连线 -->
@@ -413,20 +531,22 @@
         </div>
       </div>
       <!-- 节点边框风格 -->
-      <div class="title noTop">{{ $t('baseStyle.nodeBorderType') }}</div>
-      <div class="row">
-        <div class="rowItem">
-          <el-checkbox
-            v-model="style.nodeUseLineStyle"
-            @change="
-              value => {
-                update('nodeUseLineStyle', value)
-              }
-            "
-            >{{ $t('baseStyle.nodeUseLineStyle') }}</el-checkbox
-          >
+      <template v-if="showNodeUseLineStyle">
+        <div class="title noTop">{{ $t('baseStyle.nodeBorderType') }}</div>
+        <div class="row">
+          <div class="rowItem">
+            <el-checkbox
+              v-model="style.nodeUseLineStyle"
+              @change="
+                value => {
+                  update('nodeUseLineStyle', value)
+                }
+              "
+              >{{ $t('baseStyle.nodeUseLineStyle') }}</el-checkbox
+            >
+          </div>
         </div>
-      </div>
+      </template>
       <!-- 内边距 -->
       <div class="title noTop">{{ $t('baseStyle.nodePadding') }}</div>
       <div class="row">
@@ -566,6 +686,26 @@
         </div>
       </div>
       <template v-if="watermarkConfig.show">
+        <!-- 是否仅在导出时显示 -->
+        <div class="row">
+          <div class="rowItem">
+            <el-checkbox
+              v-model="watermarkConfig.onlyExport"
+              @change="updateWatermarkConfig"
+              >{{ $t('baseStyle.onlyExport') }}</el-checkbox
+            >
+          </div>
+        </div>
+        <!-- 是否在节点下方 -->
+        <div class="row">
+          <div class="rowItem">
+            <el-checkbox
+              v-model="watermarkConfig.belowNode"
+              @change="updateWatermarkConfig"
+              >{{ $t('baseStyle.belowNode') }}</el-checkbox
+            >
+          </div>
+        </div>
         <!-- 水印文字 -->
         <div class="row">
           <div class="rowItem">
@@ -753,6 +893,36 @@
           </el-select>
         </div>
       </div>
+      <!-- 配置创建新节点时的行为 -->
+      <div class="row">
+        <div class="rowItem">
+          <span class="name">{{ $t('baseStyle.createNewNodeBehavior') }}</span>
+          <el-select
+            size="mini"
+            style="width: 120px"
+            v-model="config.createNewNodeBehavior"
+            placeholder=""
+            @change="
+              value => {
+                updateOtherConfig('createNewNodeBehavior', value)
+              }
+            "
+          >
+            <el-option
+              :label="$t('baseStyle.default')"
+              value="default"
+            ></el-option>
+            <el-option
+              :label="$t('baseStyle.notActive')"
+              value="notActive"
+            ></el-option>
+            <el-option
+              :label="$t('baseStyle.activeOnly')"
+              value="activeOnly"
+            ></el-option>
+          </el-select>
+        </div>
+      </div>
       <!-- 是否显示滚动条 -->
       <div class="row">
         <div class="rowItem">
@@ -760,6 +930,16 @@
             v-model="localConfigs.isShowScrollbar"
             @change="updateLocalConfig('isShowScrollbar', $event)"
             >{{ $t('baseStyle.isShowScrollbar') }}</el-checkbox
+          >
+        </div>
+      </div>
+      <!-- 是否开启手绘风格 -->
+      <div class="row" v-if="supportHandDrawnLikeStyle">
+        <div class="rowItem">
+          <el-checkbox
+            v-model="localConfigs.isUseHandDrawnLikeStyle"
+            @change="updateLocalConfig('isUseHandDrawnLikeStyle', $event)"
+            >{{ $t('baseStyle.isUseHandDrawnLikeStyle') }}</el-checkbox
           >
         </div>
       </div>
@@ -784,6 +964,13 @@ import {
 import ImgUpload from '@/components/ImgUpload'
 import { storeConfig } from '@/api'
 import { mapState, mapMutations } from 'vuex'
+import {
+  supportLineStyleLayoutsMap,
+  supportLineRadiusLayouts,
+  supportNodeUseLineStyleLayouts,
+  supportRootLineKeepSameInCurveLayouts,
+  rainbowLinesOptions
+} from '@/config/constant'
 
 /**
  * @Author: 王林
@@ -808,6 +995,7 @@ export default {
   },
   data() {
     return {
+      rainbowLinesOptions,
       lineWidthList,
       fontSizeList,
       activeTab: 'color',
@@ -817,7 +1005,10 @@ export default {
         lineColor: '',
         lineWidth: '',
         lineStyle: '',
+        showLineMarker: '',
         rootLineKeepSameInCurve: '',
+        rootLineStartPositionKeepSameInCurve: '',
+        lineRadius: 0,
         generalizationLineWidth: '',
         generalizationLineColor: '',
         associativeLineColor: '',
@@ -843,10 +1034,12 @@ export default {
       config: {
         enableFreeDrag: false,
         mousewheelAction: 'zoom',
-        mousewheelZoomActionReverse: false
+        mousewheelZoomActionReverse: false,
+        createNewNodeBehavior: 'default'
       },
       watermarkConfig: {
         show: false,
+        onlyExport: false,
         text: '',
         lineSpacing: 100,
         textSpacing: 100,
@@ -857,16 +1050,24 @@ export default {
           fontSize: 1
         }
       },
+      rainbowLinesPopoverVisible: false,
+      curRainbowLineColorList: null,
       updateWatermarkTimer: null,
       enableNodeRichText: true,
       localConfigs: {
-        isShowScrollbar: false
-      }
+        isShowScrollbar: false,
+        isUseHandDrawnLikeStyle: false
+      },
+      currentLayout: '' // 当前结构
     }
   },
   computed: {
-    ...mapState(['activeSidebar', 'localConfig', 'isDark']),
-
+    ...mapState({
+      activeSidebar: state => state.activeSidebar,
+      localConfig: state => state.localConfig,
+      isDark: state => state.localConfig.isDark,
+      supportHandDrawnLikeStyle: state => state.supportHandDrawnLikeStyle
+    }),
     lineStyleList() {
       return lineStyleList[this.$i18n.locale] || lineStyleList.zh
     },
@@ -892,6 +1093,32 @@ export default {
     },
     lineStyleMap() {
       return lineStyleMap[this.$i18n.locale] || lineStyleMap.zh
+    },
+    showNodeUseLineStyle() {
+      return supportNodeUseLineStyleLayouts.includes(this.currentLayout)
+    },
+    showLineRadius() {
+      return (
+        this.style.lineStyle === 'straight' &&
+        supportLineRadiusLayouts.includes(this.currentLayout)
+      )
+    },
+    lineStyleListShow() {
+      const res = []
+      this.lineStyleList.forEach(item => {
+        const list = supportLineStyleLayoutsMap[item.value]
+        if (list) {
+          if (list.includes(this.currentLayout)) {
+            res.push(item)
+          }
+        } else {
+          res.push(item)
+        }
+      })
+      return res
+    },
+    showRootLineKeepSameInCurveLayouts() {
+      return supportRootLineKeepSameInCurveLayouts.includes(this.currentLayout)
     }
   },
   watch: {
@@ -901,8 +1128,21 @@ export default {
         this.initStyle()
         this.initConfig()
         this.initWatermark()
+        this.initRainbowLines()
+        this.currentLayout = this.mindMap.getLayout()
       } else {
         this.$refs.sidebar.show = false
+      }
+    },
+    lineStyleListShow: {
+      deep: true,
+      handler() {
+        const has = this.lineStyleListShow.find(item => {
+          return item.value === this.style.lineStyle
+        })
+        if (!has) {
+          this.style.lineStyle = this.lineStyleListShow[0].value
+        }
       }
     }
   },
@@ -933,7 +1173,10 @@ export default {
         'backgroundColor',
         'lineWidth',
         'lineStyle',
+        'showLineMarker',
         'rootLineKeepSameInCurve',
+        'rootLineStartPositionKeepSameInCurve',
+        'lineRadius',
         'lineColor',
         'generalizationLineWidth',
         'generalizationLineColor',
@@ -968,7 +1211,8 @@ export default {
       ;[
         'enableFreeDrag',
         'mousewheelAction',
-        'mousewheelZoomActionReverse'
+        'mousewheelZoomActionReverse',
+        'createNewNodeBehavior'
       ].forEach(key => {
         this.config[key] = this.mindMap.getConfig(key)
       })
@@ -979,9 +1223,7 @@ export default {
       this.enableNodeRichText = this.localConfig.openNodeRichText
       this.mousewheelAction = this.localConfig.mousewheelAction
       this.mousewheelZoomActionReverse = this.localConfig.mousewheelZoomActionReverse
-      ;[
-        'isShowScrollbar'
-      ].forEach(key => {
+      ;['isShowScrollbar', 'isUseHandDrawnLikeStyle'].forEach(key => {
         this.localConfigs[key] = this.localConfig[key]
       })
     },
@@ -989,11 +1231,23 @@ export default {
     // 初始化水印配置
     initWatermark() {
       let config = this.mindMap.getConfig('watermarkConfig')
-      ;['text', 'lineSpacing', 'textSpacing', 'angle'].forEach(key => {
-        this.watermarkConfig[key] = config[key]
-      })
+      ;['text', 'lineSpacing', 'textSpacing', 'angle', 'onlyExport'].forEach(
+        key => {
+          this.watermarkConfig[key] = config[key]
+        }
+      )
       this.watermarkConfig.show = !!config.text
       this.watermarkConfig.textStyle = { ...config.textStyle }
+    },
+
+    // 初始化彩虹线条配置
+    initRainbowLines() {
+      const config = this.mindMap.getConfig('rainbowLinesConfig') || {}
+      this.curRainbowLineColorList = config.open
+        ? this.mindMap.rainbowLines
+          ? this.mindMap.rainbowLines.getColorsList()
+          : null
+        : null
     },
 
     /**
@@ -1061,6 +1315,29 @@ export default {
       }, 300)
     },
 
+    // 更新彩虹线条配置
+    updateRainbowLinesConfig(item) {
+      this.rainbowLinesPopoverVisible = false
+      this.curRainbowLineColorList = item.list || null
+      this.data.config = this.data.config || {}
+      let newConfig = null
+      if (item.list) {
+        newConfig = {
+          open: true,
+          colorsList: item.list
+        }
+      } else {
+        newConfig = {
+          open: false
+        }
+      }
+      this.data.config.rainbowLinesConfig = newConfig
+      this.mindMap.rainbowLines.updateRainLinesConfig(newConfig)
+      storeConfig({
+        config: this.data.config
+      })
+    },
+
     // 设置margin
     updateMargin(type, value) {
       this.style[type] = value
@@ -1119,7 +1396,8 @@ export default {
 
     .row {
       .rowItem {
-        .name {
+        .name,
+        .curRainbowLine {
           color: hsla(0, 0%, 100%, 0.6);
         }
       }
@@ -1179,6 +1457,17 @@ export default {
         height: 30px;
         border: 1px solid #dcdfe6;
         border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .curRainbowLine {
+        height: 24px;
+        border: 1px solid #dcdfe6;
+        font-size: 12px;
+        width: 240px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
       }
     }
@@ -1251,6 +1540,45 @@ export default {
     path {
       stroke: #000;
     }
+  }
+}
+
+.rainbowLinesOptionsBox {
+  width: 200px;
+
+  &.isDark {
+    .optionItem {
+      color: hsla(0, 0%, 100%, 0.6);
+
+      &:hover {
+        background-color: hsla(0, 0%, 100%, 0.05);
+      }
+    }
+  }
+
+  .optionItem {
+    width: 100%;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+  }
+}
+
+.colorsBar {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+
+  .colorItem {
+    flex: 1;
+    height: 15px;
   }
 }
 </style>

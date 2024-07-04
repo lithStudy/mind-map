@@ -9,10 +9,10 @@ import {
 function createControlNodes() {
   let { associativeLineActiveColor } = this.mindMap.themeConfig
   // 连线
-  this.controlLine1 = this.draw
+  this.controlLine1 = this.associativeLineDraw
     .line()
     .stroke({ color: associativeLineActiveColor, width: 2 })
-  this.controlLine2 = this.draw
+  this.controlLine2 = this.associativeLineDraw
     .line()
     .stroke({ color: associativeLineActiveColor, width: 2 })
   // 控制点
@@ -23,7 +23,7 @@ function createControlNodes() {
 // 创建控制点
 function createOneControlNode(pointKey) {
   let { associativeLineActiveColor } = this.mindMap.themeConfig
-  return this.draw
+  return this.associativeLineDraw
     .circle(this.controlPointDiameter)
     .stroke({ color: associativeLineActiveColor })
     .fill({ color: '#fff' })
@@ -38,6 +38,7 @@ function createOneControlNode(pointKey) {
 // 控制点的鼠标按下事件
 function onControlPointMousedown(e, pointKey) {
   e.stopPropagation()
+  e.preventDefault()
   this.isControlPointMousedown = true
   this.mousedownControlPointKey = pointKey
 }
@@ -64,7 +65,7 @@ function onControlPointMousemove(e) {
   let [, , , node, toNode] = this.activeLine
   let targetIndex = getAssociativeLineTargetIndex(node, toNode)
   let { associativeLinePoint, associativeLineTargetControlOffsets } =
-    node.nodeData.data
+    node.getData()
   associativeLinePoint = associativeLinePoint || []
   const nodePos = this.getNodePos(node)
   const toNodePos = this.getNodePos(toNode)
@@ -160,7 +161,7 @@ function onControlPointMouseup(e) {
   let [, , , node] = this.activeLine
   let offsetList = []
   let { associativeLinePoint, associativeLineTargetControlOffsets } =
-    node.nodeData.data
+    node.getData()
   if (!associativeLinePoint) {
     associativeLinePoint = []
   }
@@ -221,6 +222,7 @@ function resetControlPoint() {
 
 // 渲染控制点
 function renderControls(startPoint, endPoint, point1, point2) {
+  if (!this.mindMap.opt.enableAdjustAssociativeLinePoints) return
   if (!this.controlLine1) {
     this.createControlNodes()
   }

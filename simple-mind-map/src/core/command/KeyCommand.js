@@ -1,4 +1,5 @@
 import { keyMap } from './keyMap'
+
 //  快捷按键、命令处理类
 export default class KeyCommand {
   //  构造函数
@@ -38,35 +39,56 @@ export default class KeyCommand {
 
   //  绑定事件
   bindEvent() {
+    this.onKeydown = this.onKeydown.bind(this)
     // 只有当鼠标在画布内才响应快捷键
     this.mindMap.on('svg_mouseenter', () => {
       this.isInSvg = true
     })
     this.mindMap.on('svg_mouseleave', () => {
-      if (this.mindMap.richText && this.mindMap.richText.showTextEdit) {
-        return
-      }
-      if (this.mindMap.renderer.textEdit.showTextEdit || (this.mindMap.associativeLine && this.mindMap.associativeLine.showTextEdit)) {
+      if (this.mindMap.renderer.textEdit.isShowTextEdit()) return
+      if (
+        this.mindMap.associativeLine &&
+        this.mindMap.associativeLine.showTextEdit
+      ) {
         return
       }
       this.isInSvg = false
     })
-    window.addEventListener('keydown', e => {
-      if (this.isPause || (this.mindMap.opt.enableShortcutOnlyWhenMouseInSvg && !this.isInSvg)) {
-        return
-      }
-      Object.keys(this.shortcutMap).forEach(key => {
-        if (this.checkKey(e, key)) {
-          // 粘贴事件不组织，因为要监听paste事件
-          if (!this.checkKey(e, 'Control+v')) {
-            e.stopPropagation()
-            e.preventDefault()
-          }
-          this.shortcutMap[key].forEach(fn => {
-            fn()
-          })
+    window.addEventListener('keydown', this.onKeydown)
+    this.mindMap.on('beforeDestroy', () => {
+      this.unBindEvent()
+    })
+  }
+
+  // 解绑事件
+  unBindEvent() {
+    window.removeEventListener('keydown', this.onKeydown)
+  }
+
+  // 按键事件
+  onKeydown(e) {
+    const { enableShortcutOnlyWhenMouseInSvg, beforeShortcutRun } = this.mindMap.opt
+    if (
+      this.isPause ||
+      (enableShortcutOnlyWhenMouseInSvg && !this.isInSvg)
+    ) {
+      return
+    }
+    Object.keys(this.shortcutMap).forEach(key => {
+      if (this.checkKey(e, key)) {
+        // 粘贴事件不组织，因为要监听paste事件
+        if (!this.checkKey(e, 'Control+v')) {
+          e.stopPropagation()
+          e.preventDefault()
         }
-      })
+        if (typeof beforeShortcutRun === 'function') {
+          const isStop = beforeShortcutRun(key, [...this.mindMap.renderer.activeNodeList])
+          if (isStop) return
+        }
+        this.shortcutMap[key].forEach(fn => {
+          fn()
+        })
+      }
     })
   }
 

@@ -2,6 +2,7 @@
   <div
     class="contextmenuContainer listBox"
     v-if="isShow"
+    ref="contextmenuRef"
     :style="{ left: left + 'px', top: top + 'px' }"
     :class="{ isDark: isDark }"
   >
@@ -11,7 +12,7 @@
         @click="exec('INSERT_NODE', insertNodeBtnDisabled)"
         :class="{ disabled: insertNodeBtnDisabled }"
       >
-        {{ $t('contextmenu.insertSiblingNode') }}
+        <span class="name">{{ $t('contextmenu.insertSiblingNode') }}</span>
         <span class="desc">Enter</span>
       </div>
       <div
@@ -19,15 +20,23 @@
         @click="exec('INSERT_CHILD_NODE')"
         :class="{ disabled: isGeneralization }"
       >
-        {{ $t('contextmenu.insertChildNode') }}
+        <span class="name">{{ $t('contextmenu.insertChildNode') }}</span>
         <span class="desc">Tab</span>
+      </div>
+      <div
+        class="item"
+        @click="exec('INSERT_PARENT_NODE')"
+        :class="{ disabled: insertNodeBtnDisabled }"
+      >
+        <span class="name">{{ $t('contextmenu.insertParentNode') }}</span>
+        <span class="desc">Shift + Tab</span>
       </div>
       <div
         class="item"
         @click="exec('ADD_GENERALIZATION')"
         :class="{ disabled: insertNodeBtnDisabled }"
       >
-        {{ $t('contextmenu.insertSummary') }}
+        <span class="name">{{ $t('contextmenu.insertSummary') }}</span>
         <span class="desc">Ctrl + G</span>
       </div>
       <div
@@ -35,7 +44,7 @@
         @click="exec('UP_NODE')"
         :class="{ disabled: upNodeBtnDisabled }"
       >
-        {{ $t('contextmenu.moveUpNode') }}
+        <span class="name">{{ $t('contextmenu.moveUpNode') }}</span>
         <span class="desc">Ctrl + ↑</span>
       </div>
       <div
@@ -43,19 +52,23 @@
         @click="exec('DOWN_NODE')"
         :class="{ disabled: downNodeBtnDisabled }"
       >
-        {{ $t('contextmenu.moveDownNode') }}
+        <span class="name">{{ $t('contextmenu.moveDownNode') }}</span>
         <span class="desc">Ctrl + ↓</span>
       </div>
       <div class="item danger" @click="exec('REMOVE_NODE')">
-        {{ $t('contextmenu.deleteNode') }}
+        <span class="name">{{ $t('contextmenu.deleteNode') }}</span>
         <span class="desc">Delete</span>
+      </div>
+      <div class="item danger" @click="exec('REMOVE_CURRENT_NODE')">
+        <span class="name">{{ $t('contextmenu.deleteCurrentNode') }}</span>
+        <span class="desc">Shift + Backspace</span>
       </div>
       <div
         class="item"
         @click="exec('COPY_NODE')"
         :class="{ disabled: isGeneralization }"
       >
-        {{ $t('contextmenu.copyNode') }}
+        <span class="name">{{ $t('contextmenu.copyNode') }}</span>
         <span class="desc">Ctrl + C</span>
       </div>
       <div
@@ -63,33 +76,40 @@
         @click="exec('CUT_NODE')"
         :class="{ disabled: isGeneralization }"
       >
-        {{ $t('contextmenu.cutNode') }}
+        <span class="name">{{ $t('contextmenu.cutNode') }}</span>
         <span class="desc">Ctrl + X</span>
       </div>
       <div class="item" @click="exec('PASTE_NODE')">
-        {{ $t('contextmenu.pasteNode') }}
+        <span class="name">{{ $t('contextmenu.pasteNode') }}</span>
         <span class="desc">Ctrl + V</span>
       </div>
       <div class="item" @click="exec('REMOVE_HYPERLINK')" v-if="hasHyperlink">
-        {{ $t('contextmenu.removeHyperlink') }}
+        <span class="name">{{ $t('contextmenu.removeHyperlink') }}</span>
       </div>
       <div class="item" @click="exec('REMOVE_NOTE')" v-if="hasNote">
-        {{ $t('contextmenu.removeNote') }}
+        <span class="name">{{ $t('contextmenu.removeNote') }}</span>
+      </div>
+      <div class="item" @click="exec('REMOVE_CUSTOM_STYLES')">
+        <span class="name">{{ $t('contextmenu.removeCustomStyles') }}</span>
+      </div>
+      <div class="item" @click="exec('EXPORT_CUR_NODE_TO_PNG')">
+        <span class="name">{{ $t('contextmenu.exportNodeToPng') }}</span>
       </div>
     </template>
     <template v-if="type === 'svg'">
       <div class="item" @click="exec('RETURN_CENTER')">
-        {{ $t('contextmenu.backCenter') }}
+        <span class="name">{{ $t('contextmenu.backCenter') }}</span>
         <span class="desc">Ctrl + Enter</span>
       </div>
       <div class="item" @click="exec('EXPAND_ALL')">
-        {{ $t('contextmenu.expandAll') }}
+        <span class="name">{{ $t('contextmenu.expandAll') }}</span>
       </div>
       <div class="item" @click="exec('UNEXPAND_ALL')">
-        {{ $t('contextmenu.unExpandAll') }}
+        <span class="name">{{ $t('contextmenu.unExpandAll') }}</span>
       </div>
       <div class="item">
-        {{ $t('contextmenu.expandTo') }}
+        <span class="name">{{ $t('contextmenu.expandTo') }}</span>
+        <span class="el-icon-arrow-right"></span>
         <div class="subItems listBox" :class="{ isDark: isDark }">
           <div
             class="item"
@@ -102,16 +122,35 @@
         </div>
       </div>
       <div class="item" @click="exec('RESET_LAYOUT')">
-        {{ $t('contextmenu.arrangeLayout') }}
+        <span class="name">{{ $t('contextmenu.arrangeLayout') }}</span>
         <span class="desc">Ctrl + L</span>
       </div>
       <div class="item" @click="exec('FIT_CANVAS')">
-        {{ $t('contextmenu.fitCanvas') }}
+        <span class="name">{{ $t('contextmenu.fitCanvas') }}</span>
         <span class="desc">Ctrl + i</span>
       </div>
       <div class="item" @click="exec('TOGGLE_ZEN_MODE')">
-        {{ $t('contextmenu.zenMode') }}
+        <span class="name">{{ $t('contextmenu.zenMode') }}</span>
         {{ isZenMode ? '√' : '' }}
+      </div>
+      <div class="item" @click="exec('REMOVE_ALL_NODE_CUSTOM_STYLES')">
+        <span class="name">{{
+          $t('contextmenu.removeAllNodeCustomStyles')
+        }}</span>
+      </div>
+      <div class="item">
+        <span class="name">{{ $t('contextmenu.copyToClipboard') }}</span>
+        <span class="el-icon-arrow-right"></span>
+        <div class="subItems listBox" :class="{ isDark: isDark }">
+          <div
+            class="item"
+            v-for="item in copyList"
+            :key="item.value"
+            @click="copyToClipboard(item.value)"
+          >
+            {{ item.name }}
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -119,6 +158,10 @@
 
 <script>
 import { mapState, mapMutations } from 'vuex'
+import { getTextFromHtml, imgToDataUrl } from 'simple-mind-map/src/utils'
+import { transformToMarkdown } from 'simple-mind-map/src/parse/toMarkdown'
+import { transformToTxt } from 'simple-mind-map/src/parse/toTxt'
+import { setDataToClipboard, setImgToClipboard, copy } from '@/utils'
 
 /**
  * @Author: 王林
@@ -141,13 +184,14 @@ export default {
       type: '',
       isMousedown: false,
       mosuedownX: 0,
-      mosuedownY: 0
+      mosuedownY: 0,
+      enableCopyToClipboardApi: navigator.clipboard
     }
   },
   computed: {
     ...mapState({
       isZenMode: state => state.localConfig.isZenMode,
-      isDark: state => state.isDark
+      isDark: state => state.localConfig.isDark
     }),
     expandList() {
       return [
@@ -158,6 +202,33 @@ export default {
         this.$t('contextmenu.level5'),
         this.$t('contextmenu.level6')
       ]
+    },
+    copyList() {
+      const list = [
+        {
+          name: this.$t('contextmenu.copyToSmm'),
+          value: 'smm'
+        },
+        {
+          name: this.$t('contextmenu.copyToJson'),
+          value: 'json'
+        },
+        {
+          name: this.$t('contextmenu.copyToMarkdown'),
+          value: 'md'
+        },
+        {
+          name: this.$t('contextmenu.copyToTxt'),
+          value: 'txt'
+        }
+      ]
+      if (this.enableCopyToClipboardApi) {
+        list.push({
+          name: this.$t('contextmenu.copyToPng'),
+          value: 'png'
+        })
+      }
+      return list
     },
     insertNodeBtnDisabled() {
       return !this.node || this.node.isRoot || this.node.isGeneralization
@@ -201,6 +272,7 @@ export default {
     this.$bus.$on('expand_btn_click', this.hide)
     this.$bus.$on('svg_mousedown', this.onMousedown)
     this.$bus.$on('mouseup', this.onMouseup)
+    this.$bus.$on('translate', this.hide)
   },
   beforeDestroy() {
     this.$bus.$off('node_contextmenu', this.show)
@@ -209,28 +281,36 @@ export default {
     this.$bus.$off('expand_btn_click', this.hide)
     this.$bus.$off('svg_mousedown', this.onMousedown)
     this.$bus.$off('mouseup', this.onMouseup)
+    this.$bus.$off('translate', this.hide)
   },
   methods: {
     ...mapMutations(['setLocalConfig']),
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-14 21:38:50
-     * @Desc: 节点右键显示
-     */
-    show(e, node) {
-      this.type = 'node'
-      this.left = e.clientX + 10
-      this.top = e.clientY + 10
-      this.isShow = true
-      this.node = node
+    // 计算右键菜单元素的显示位置
+    getShowPosition(x, y) {
+      const rect = this.$refs.contextmenuRef.getBoundingClientRect()
+      if (x + rect.width > window.innerWidth) {
+        x = x - rect.width - 20
+      }
+      if (y + rect.height > window.innerHeight) {
+        y = window.innerHeight - rect.height - 10
+      }
+      return { x, y }
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-16 13:27:48
-     * @Desc: 鼠标按下事件
-     */
+    // 节点右键显示
+    show(e, node) {
+      this.type = 'node'
+      this.isShow = true
+      this.node = node
+      this.$nextTick(() => {
+        const { x, y } = this.getShowPosition(e.clientX + 10, e.clientY + 10)
+        this.left = x
+        this.top = y
+      })
+    },
+
+    // 鼠标按下事件
     onMousedown(e) {
       if (e.which !== 3) {
         return
@@ -240,11 +320,7 @@ export default {
       this.isMousedown = true
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-16 13:27:53
-     * @Desc: 鼠标松开事件
-     */
+    // 鼠标松开事件
     onMouseup(e) {
       if (!this.isMousedown) {
         return
@@ -260,35 +336,26 @@ export default {
       this.show2(e)
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-15 22:54:08
-     * @Desc: 画布右键显示
-     */
+    // 画布右键显示
     show2(e) {
       this.type = 'svg'
-      this.left = e.clientX + 10
-      this.top = e.clientY + 10
       this.isShow = true
+      this.$nextTick(() => {
+        const { x, y } = this.getShowPosition(e.clientX + 10, e.clientY + 10)
+        this.left = x
+        this.top = y
+      })
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-14 21:37:55
-     * @Desc: 隐藏
-     */
+    // 隐藏
     hide() {
       this.isShow = false
-      this.left = 0
-      this.top = 0
+      this.left = -9999
+      this.top = -9999
       this.type = ''
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-14 23:27:54
-     * @Desc: 执行命令
-     */
+    // 执行命令
     exec(key, disabled, ...args) {
       if (disabled) {
         return
@@ -304,7 +371,7 @@ export default {
           this.mindMap.renderer.paste()
           break
         case 'RETURN_CENTER':
-          this.mindMap.view.reset()
+          this.mindMap.renderer.setRootNodeCenter()
           break
         case 'TOGGLE_ZEN_MODE':
           this.setLocalConfig({
@@ -320,11 +387,62 @@ export default {
         case 'REMOVE_NOTE':
           this.node.setNote('')
           break
+        case 'EXPORT_CUR_NODE_TO_PNG':
+          this.mindMap.export(
+            'png',
+            true,
+            getTextFromHtml(this.node.getData('text')),
+            false,
+            this.node
+          )
+          break
         default:
           this.$bus.$emit('execCommand', key, ...args)
           break
       }
       this.hide()
+    },
+
+    // 复制到剪贴板
+    async copyToClipboard(type) {
+      try {
+        this.hide()
+        let data
+        let str
+        switch (type) {
+          case 'smm':
+          case 'json':
+            data = this.mindMap.getData(true)
+            str = JSON.stringify(data)
+            break
+          case 'md':
+            data = this.mindMap.getData()
+            str = transformToMarkdown(data)
+            break
+          case 'txt':
+            data = this.mindMap.getData()
+            str = transformToTxt(data)
+            break
+          case 'png':
+            const png = await this.mindMap.export('png', false)
+            const blob = await imgToDataUrl(png, true)
+            setImgToClipboard(blob)
+            break
+          default:
+            break
+        }
+        if (str) {
+          if (this.enableCopyToClipboardApi) {
+            setDataToClipboard(str)
+          } else {
+            copy(str)
+          }
+        }
+        this.$message.success(this.$t('contextmenu.copySuccess'))
+      } catch (error) {
+        console.log(error)
+        this.$message.error(this.$t('contextmenu.copyFail'))
+      }
     }
   }
 }
@@ -332,7 +450,7 @@ export default {
 
 <style lang="less" scoped>
 .listBox {
-  width: 200px;
+  width: 250px;
   background: #fff;
   box-shadow: 0 4px 12px 0 hsla(0, 0%, 69%, 0.5);
   border-radius: 4px;
@@ -363,11 +481,11 @@ export default {
   .item {
     position: relative;
     height: 28px;
-    line-height: 28px;
     padding: 0 16px;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 
     &.danger {
       color: #f56c6c;
@@ -391,8 +509,17 @@ export default {
       }
     }
 
+    .name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .desc {
       color: #999;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .subItems {
@@ -400,6 +527,7 @@ export default {
       left: 100%;
       top: 0;
       visibility: hidden;
+      width: 150px;
     }
   }
 }

@@ -10,8 +10,8 @@
               class="icon iconfont"
               :class="[item2.icon]"
             ></span>
-            <span class="name">{{ item2.name }}</span>
-            <div class="value">{{ item2.value }}</div>
+            <span class="name" :title="item2.name">{{ item2.name }}</span>
+            <div class="value" :title="item2.value">{{ item2.value }}</div>
           </div>
         </div>
       </div>
@@ -38,7 +38,10 @@ export default {
     return {}
   },
   computed: {
-    ...mapState(['activeSidebar', 'isDark']),
+    ...mapState({
+      isDark: state => state.localConfig.isDark,
+      activeSidebar: state => state.activeSidebar
+    }),
 
     shortcutKeyList() {
       return shortcutKeyList[this.$i18n.locale] || shortcutKeyList.zh
@@ -67,16 +70,15 @@ export default {
 
     .list {
       .item {
-
         .icon {
-          color: hsla(0,0%,100%,.6);
+          color: hsla(0, 0%, 100%, 0.6);
         }
         .name {
-          color: hsla(0,0%,100%,.6);
+          color: hsla(0, 0%, 100%, 0.6);
         }
-        
+
         .value {
-          color: hsla(0,0%,100%,.3);
+          color: hsla(0, 0%, 100%, 0.3);
         }
       }
     }
@@ -104,11 +106,17 @@ export default {
 
       .name {
         color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .value {
         color: #909090;
         margin-left: auto;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
   }

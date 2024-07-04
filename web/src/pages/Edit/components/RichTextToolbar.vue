@@ -7,13 +7,13 @@
     @click.stop.passive
     v-show="showRichTextToolbar"
   >
-    <el-tooltip content="加粗" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.bold')" placement="top">
       <div class="btn" :class="{ active: formatInfo.bold }" @click="toggleBold">
         <span class="icon iconfont iconzitijiacu"></span>
       </div>
     </el-tooltip>
 
-    <el-tooltip content="斜体" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.italic')" placement="top">
       <div
         class="btn"
         :class="{ active: formatInfo.italic }"
@@ -23,7 +23,7 @@
       </div>
     </el-tooltip>
 
-    <el-tooltip content="下划线" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.underline')" placement="top">
       <div
         class="btn"
         :class="{ active: formatInfo.underline }"
@@ -33,7 +33,7 @@
       </div>
     </el-tooltip>
 
-    <el-tooltip content="删除线" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.strike')" placement="top">
       <div
         class="btn"
         :class="{ active: formatInfo.strike }"
@@ -43,7 +43,7 @@
       </div>
     </el-tooltip>
 
-    <el-tooltip content="字体" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.fontFamily')" placement="top">
       <el-popover placement="bottom" trigger="hover">
         <div class="fontOptionsList" :class="{ isDark: isDark }">
           <div
@@ -63,14 +63,17 @@
       </el-popover>
     </el-tooltip>
 
-    <el-tooltip content="字号" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.fontSize')" placement="top">
       <el-popover placement="bottom" trigger="hover">
         <div class="fontOptionsList" :class="{ isDark: isDark }">
           <div
             class="fontOptionItem"
             v-for="item in fontSizeList"
             :key="item"
-            :style="{ fontSize: item + 'px' }"
+            :style="{
+              fontSize: item + 'px',
+              height: (item < 30 ? 30 : item + 10) + 'px'
+            }"
             :class="{ active: formatInfo.size === item + 'px' }"
             @click="changeFontSize(item)"
           >
@@ -83,7 +86,7 @@
       </el-popover>
     </el-tooltip>
 
-    <el-tooltip content="字体颜色" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.color')" placement="top">
       <el-popover placement="bottom" trigger="hover">
         <Color :color="fontColor" @change="changeFontColor"></Color>
         <div class="btn" slot="reference" :style="{ color: formatInfo.color }">
@@ -92,7 +95,10 @@
       </el-popover>
     </el-tooltip>
 
-    <el-tooltip content="背景颜色" placement="top">
+    <el-tooltip
+      :content="$t('richTextToolbar.backgroundColor')"
+      placement="top"
+    >
       <el-popover placement="bottom" trigger="hover">
         <Color
           :color="fontBackgroundColor"
@@ -104,7 +110,7 @@
       </el-popover>
     </el-tooltip>
 
-    <el-tooltip content="清除样式" placement="top">
+    <el-tooltip :content="$t('richTextToolbar.removeFormat')" placement="top">
       <div class="btn" @click="removeFormat">
         <span class="icon iconfont iconqingchu"></span>
       </div>
@@ -141,7 +147,9 @@ export default {
     }
   },
   computed: {
-    ...mapState(['isDark']),
+    ...mapState({
+      isDark: state => state.localConfig.isDark
+    }),
 
     fontFamilyList() {
       return fontFamilyList[this.$i18n.locale] || fontFamilyList.zh

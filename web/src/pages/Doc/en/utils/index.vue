@@ -54,14 +54,27 @@ basic data, otherwise it will throw an error</p>
 <p><code>removeActiveState</code>: <code>Boolean</code>, default is <code>false</code>, Whether to remove the active state of the node</p>
 </li>
 <li>
-<p><code>keepId</code>: v0.4.6+, <code>Boolean</code>, default is <code>false</code>, Whether to retain the <code>id</code> of the replicated node will be deleted by default to prevent duplicate node <code>id</code>. However, for mobile node scenarios, the original <code>id</code> of the node needs to be retained</p>
+<p><code>removeId</code>：v0.7.3-fix.1+, Is remove the uid from the node data, default is <code>true</code></p>
 </li>
 </ul>
+<blockquote>
+<ul>
+<li><code>keepId</code>: (Original fourth parameter) v0.4.6+, <code>Boolean</code>, default is <code>false</code>, Whether to retain the <code>id</code> of the replicated node will be deleted by default to prevent duplicate node <code>id</code>. However, for mobile node scenarios, the original <code>id</code> of the node needs to be retained</li>
+</ul>
+</blockquote>
 <p>Copy node tree data, mainly eliminating the reference <code>node</code> instance <code>_node</code>
 and copying the <code>data</code> of the data object, example:</p>
 <pre class="hljs"><code>copyNodeTree({}, node);
 </code></pre>
-<h4>imgToDataUrl(src)</h4>
+<h4>imgToDataUrl(src, returnBlob = false)</h4>
+<ul>
+<li>
+<p><code>src</code>：Image url</p>
+</li>
+<li>
+<p><code>returnBlob</code>：v0.10.2+，Is the result returned in Blob format, defaulting to DataURL format</p>
+</li>
+</ul>
 <p>Convert image to dataURL</p>
 <h4>downloadFile(file, fileName)</h4>
 <p>Download file</p>
@@ -179,6 +192,255 @@ and copying the <code>data</code> of the data object, example:</p>
 <p>v0.6.13+</p>
 </blockquote>
 <p>Determine if it is a mobile environment.</p>
+<h4>getTopAncestorsFomNodeList(list)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>list</code>: Arrray, Node instance list.</li>
+</ul>
+<p>Find the top-level node list from the node instance list.</p>
+<h4>checkTwoRectIsOverlap(minx1, maxx1, miny1, maxy1, minx2, maxx2, miny2, maxy2)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<p>The parameter is the position of two rectangles.</p>
+<p>Determine if two rectangles overlap.</p>
+<h4>focusInput(el)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>el</code>: DOM nodes, elements that can be focused, typically input box elements.</li>
+</ul>
+<p>Focus on the specified input box.</p>
+<h4>selectAllInput(el)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>el</code>: DOM nodes, elements that can be focused, typically input box elements.</li>
+</ul>
+<p>Focus and select all specified input boxes.</p>
+<h4>addDataToAppointNodes(appointNodes, data = {})</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li>
+<p><code>appointNodes</code>：Node instance list, array type.</p>
+</li>
+<li>
+<p><code>data</code>：The data to be attached to all nodes in the specified node instance list tree.</p>
+</li>
+</ul>
+<p>Adding additional data to the specified node list tree data will modify the original data.</p>
+<h4>createUidForAppointNodes(appointNodes, createNewId)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li>
+<p><code>appointNodes</code>：Node instance list, array type.</p>
+</li>
+<li>
+<p><code>createNewId</code>：v0.7.3-fix.1+, <code>Boolean</code>, default is <code>false</code>, If the node does not have a 'uid', a new 'uid' will be created. If 'true' is passed, a new 'uid' will be created regardless of whether the node data originally exists or not`</p>
+</li>
+</ul>
+<p>Adding a uid to the specified node list tree data (if the uid does not exist) will modify the original data.</p>
+<h4>getNodeIndex(node)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>node</code>：Node instance.</li>
+</ul>
+<p>Gets the position index of a node within its peers.</p>
+<h4>mergerIconList(list)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>list</code>：The array of node icons to be merged into the library.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-comment">// const data = [</span>
+<span class="hljs-comment">//   { type: &#x27;priority&#x27;, name: &#x27;优先级图标&#x27;, list: [{ name: &#x27;1&#x27;, icon: &#x27;a&#x27; }, { name: 2, icon: &#x27;b&#x27; }] },</span>
+<span class="hljs-comment">//   { type: &#x27;priority&#x27;, name: &#x27;优先级图标&#x27;, list: [{ name: &#x27;2&#x27;, icon: &#x27;c&#x27; }, { name: 3, icon: &#x27;d&#x27; }] },</span>
+<span class="hljs-comment">// ];</span>
+
+<span class="hljs-comment">// mergerIconList(data)  result:</span>
+
+<span class="hljs-comment">// [</span>
+<span class="hljs-comment">//   { type: &#x27;priority&#x27;, name: &#x27;优先级图标&#x27;, list: [{ name: &#x27;1&#x27;, icon: &#x27;a&#x27; }, { name: 2, icon: &#x27;c&#x27; }, { name: 3, icon: &#x27;d&#x27; }] },</span>
+<span class="hljs-comment">// ]</span>
+</code></pre>
+<p>Merge icon arrays.</p>
+<h4>htmlEscape(str)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>str</code>：String.</li>
+</ul>
+<p>Escape the incoming string, currently escaping the following three characters:</p>
+<pre class="hljs"><code>&amp; -&gt; &amp;amp;
+&lt; -&gt; &amp;lt;
+&gt; -&gt; &amp;gt;
+</code></pre>
+<h4>generateColorByContent(str)</h4>
+<blockquote>
+<p>v0.7.2+</p>
+</blockquote>
+<ul>
+<li><code>str</code>：String.</li>
+</ul>
+<p>Generate colors based on incoming content, and the same content will generate the same color.</p>
+<h4>isSameObject(a, b)</h4>
+<blockquote>
+<p>v0.7.3+</p>
+</blockquote>
+<ul>
+<li><code>a</code>、<code>b</code>: Object | Array, Two objects to compare</li>
+</ul>
+<p>Determine whether two objects are the same, only handling objects or arrays.</p>
+<h4>getNodeDataIndex(node)</h4>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<p>Gets the position index of a node within its sibling nodes.</p>
+<h4>getNodeIndexInNodeList(node, nodeList)</h4>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<p>Find the index of a node from a list of nodes.</p>
+<h4>setDataToClipboard(data)</h4>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<ul>
+<li><code>data</code>：Object | Array</li>
+</ul>
+<p>Set data to the user clipboard.</p>
+<h4>getDataFromClipboard()</h4>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<p>Reading text and images from the user's clipboard returns:</p>
+<pre class="hljs"><code>{
+  text,
+  img
+}
+</code></pre>
+<h4>removeFromParentNodeData(node)</h4>
+<blockquote>
+<p>v0.8.0+</p>
+</blockquote>
+<p>Remove the data of a node from its parent node's <code>nodeData.children</code> list.</p>
+<h4>checkHasSupSubRelation()</h4>
+<blockquote>
+<p>v0.8.1+</p>
+</blockquote>
+<p>Determine whether there is a hierarchical relationship from the given node instance list.</p>
+<h4>handleSelfCloseTags(str)</h4>
+<blockquote>
+<p>v0.9.1+</p>
+</blockquote>
+<ul>
+<li><code>str</code>: html string</li>
+</ul>
+<p>Add a closed state to HTML self closing tags, <code>&lt;div&gt;&lt;img src=&quot;xxx&quot;&gt;&lt;/div&gt;</code> -&gt; <code>&lt;div&gt;&lt;img src=&quot;xxx&quot; /&gt;&lt;/div&gt;</code>。</p>
+<h4>checkNodeListIsEqual(list1, list2)</h4>
+<blockquote>
+<p>v0.9.1+</p>
+</blockquote>
+<ul>
+<li><code>list1/list2</code>: Node instance list</li>
+</ul>
+<p>Check if the two node instance lists contain the same nodes.</p>
+<h4>getChromeVersion()</h4>
+<blockquote>
+<p>v0.9.3+</p>
+</blockquote>
+<p>Get the current version of the Chrome kernel used by the browser. If the current browser is not using the 'Chrome' kernel, an empty string will be returned.</p>
+<h4>transformTreeDataToObject(data)</h4>
+<blockquote>
+<p>v0.9.3+</p>
+</blockquote>
+<ul>
+<li><code>data</code>：Mind map node data.</li>
+</ul>
+<p>Convert the mind map tree structure to a level object.</p>
+<pre class="hljs"><code>{
+        <span class="hljs-attr">data</span>: {
+            <span class="hljs-attr">uid</span>: <span class="hljs-string">&#x27;xxx&#x27;</span>
+        },
+        <span class="hljs-attr">children</span>: [
+            {
+                <span class="hljs-attr">data</span>: {
+                    <span class="hljs-attr">uid</span>: <span class="hljs-string">&#x27;xxx&#x27;</span>
+                },
+                <span class="hljs-attr">children</span>: []
+            }
+        ]
+    }
+</code></pre>
+<p>Convert to:</p>
+<pre class="hljs"><code>    {
+        <span class="hljs-attr">uid</span>: {
+            <span class="hljs-attr">children</span>: [uid1, uid2],
+            <span class="hljs-attr">data</span>: {}
+        }
+    }
+</code></pre>
+<h4>transformObjectToTreeData(data)</h4>
+<blockquote>
+<p>v0.9.3+</p>
+</blockquote>
+<p>Convert flat objects into a tree structure. Reverse operation of the transformTreeDataToObject method.</p>
+<h4>removeHtmlNodeByClass(html, selector)</h4>
+<blockquote>
+<p>v0.9.6+</p>
+</blockquote>
+<ul>
+<li>
+<p><code>html</code>：html string</p>
+</li>
+<li>
+<p><code>selector</code>：Node selectors, such as class selectors and id selectors</p>
+</li>
+</ul>
+<p>Remove the node of the specified selector from the specified HTML string, and then return the processed HTML string.</p>
+<h4>getOnfullscreEnevt()</h4>
+<blockquote>
+<p>v0.9.11+</p>
+</blockquote>
+<p>Detect full screen events available in the current browser. You can use it this way:</p>
+<pre class="hljs"><code><span class="hljs-keyword">const</span> fullscrrenEvent = getOnfullscreEnevt()
+
+<span class="hljs-comment">// Monitor full screen events</span>
+<span class="hljs-built_in">document</span>.addEventListener(fullscrrenEvent, <span class="hljs-function">() =&gt;</span> {
+  <span class="hljs-comment">// Determine whether the current state is full screen based on whether document.fullscreenElement is null</span>
+})
+</code></pre>
+<h4>fullScreen(element)</h4>
+<blockquote>
+<p>v0.9.11+</p>
+</blockquote>
+<p>Put the specified DOM element into full screen mode.</p>
+<h4>exitFullScreen()</h4>
+<blockquote>
+<p>v0.9.11+</p>
+</blockquote>
+<p>Exit full screen mode.</p>
+<h4>defenseXSS(htmlStr)</h4>
+<blockquote>
+<p>v0.10.0+</p>
+</blockquote>
+<ul>
+<li><code>htmlStr</code>：HTML strings that need to be filtered</li>
+</ul>
+<p>Return：Filtered HTML string</p>
+<p>Defend against XSS attacks, filter malicious HTML tags and attributes. You can recursively traverse the tree data before passing the node data to SimpleMindMap, using this method to process the rich text content of nodes and avoid XSS attacks.</p>
 <h2>Simulate CSS background in Canvas</h2>
 <p>Import:</p>
 <pre class="hljs"><code><span class="hljs-keyword">import</span> drawBackgroundImageToCanvas <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;simple-mind-map/src/utils/simulateCSSBackgroundInCanvas&#x27;</span>
@@ -227,6 +489,10 @@ drawBackgroundImageToCanvas(ctx, width, height, img, {
 <p>Check if a cache exists.</p>
 <h4>get(key)</h4>
 <p>Gets the value of a cache.</p>
+<blockquote>
+<p>v0.9.2+</p>
+</blockquote>
+<p>Empty the cache pool.</p>
 
   </div>
 </template>

@@ -1,4 +1,10 @@
 import { v4 as uuidv4 } from 'uuid'
+import {
+  nodeDataNoStylePropList,
+  selfCloseTagList
+} from '../constants/constant'
+import MersenneTwister from './mersenneTwister'
+import { ForeignObject } from '@svgdotjs/svg.js'
 
 //  深度优先遍历树
 export const walk = (
@@ -151,6 +157,10 @@ export const copyRenderTree = (tree, root, removeActiveState = false) => {
   tree.data = simpleDeepClone(root.data)
   if (removeActiveState) {
     tree.data.isActive = false
+    const generalizationList = formatGetNodeGeneralization(tree.data)
+    generalizationList.forEach(item => {
+      item.isActive = false
+    })
   }
   tree.children = []
   if (root.children && root.children.length > 0) {
@@ -166,19 +176,23 @@ export const copyNodeTree = (
   tree,
   root,
   removeActiveState = false,
-  keepId = false
+  removeId = true
 ) => {
   tree.data = simpleDeepClone(root.nodeData ? root.nodeData.data : root.data)
-  // 去除节点id，因为节点id不能重复
-  if (tree.data.id && !keepId) delete tree.data.id
-  if (tree.data.uid) delete tree.data.uid
+  // 移除节点uid
+  if (removeId) {
+    delete tree.data.uid
+  } else if (!tree.data.uid) {
+    // 否则保留或生成
+    tree.data.uid = createUid()
+  }
   if (removeActiveState) {
     tree.data.isActive = false
   }
   tree.children = []
   if (root.children && root.children.length > 0) {
     root.children.forEach((item, index) => {
-      tree.children[index] = copyNodeTree({}, item, removeActiveState, keepId)
+      tree.children[index] = copyNodeTree({}, item, removeActiveState, removeId)
     })
   } else if (
     root.nodeData &&
@@ -186,14 +200,14 @@ export const copyNodeTree = (
     root.nodeData.children.length > 0
   ) {
     root.nodeData.children.forEach((item, index) => {
-      tree.children[index] = copyNodeTree({}, item, removeActiveState, keepId)
+      tree.children[index] = copyNodeTree({}, item, removeActiveState, removeId)
     })
   }
   return tree
 }
 
 //  图片转成dataURL
-export const imgToDataUrl = src => {
+export const imgToDataUrl = (src, returnBlob = false) => {
   return new Promise((resolve, reject) => {
     const img = new Image()
     // 跨域图片需要添加这个属性，否则画布被污染了无法导出图片
@@ -206,7 +220,13 @@ export const imgToDataUrl = src => {
         let ctx = canvas.getContext('2d')
         // 图片绘制到canvas里
         ctx.drawImage(img, 0, 0, img.width, img.height)
-        resolve(canvas.toDataURL())
+        if (returnBlob) {
+          canvas.toBlob(blob => {
+            resolve(blob)
+          })
+        } else {
+          resolve(canvas.toDataURL())
+        }
       } catch (e) {
         reject(e)
       }
@@ -464,7 +484,7 @@ export const removeHTMLEntities = str => {
 
 // 获取一个数据的类型
 export const getType = data => {
-  return Object.prototype.toString.call(data).slice(7, -1)
+  return Object.prototype.toString.call(data).slice(8, -1)
 }
 
 // 判断一个数据是否是null和undefined和空字符串
@@ -478,9 +498,27 @@ export const removeHtmlStyle = html => {
 }
 
 // 给html标签中指定的标签添加内联样式
+let addHtmlStyleEl = null
 export const addHtmlStyle = (html, tag, style) => {
-  const reg = new RegExp(`(<${tag}[^>]*)(>[^<>]*</${tag}>)`, 'g')
-  return html.replaceAll(reg, `$1 style="${style}"$2`)
+  if (!addHtmlStyleEl) {
+    addHtmlStyleEl = document.createElement('div')
+  }
+  addHtmlStyleEl.innerHTML = html
+  let walk = root => {
+    let childNodes = root.childNodes
+    childNodes.forEach(node => {
+      if (node.nodeType === 1) {
+        // 元素节点
+        if (node.tagName.toLowerCase() === tag) {
+          node.style.cssText = style
+        } else {
+          walk(node)
+        }
+      }
+    })
+  }
+  walk(addHtmlStyleEl)
+  return addHtmlStyleEl.innerHTML
 }
 
 // 检查一个字符串是否是富文本字符
@@ -524,6 +562,20 @@ export const replaceHtmlText = (html, searchText, replaceText) => {
   return replaceHtmlTextEl.innerHTML
 }
 
+// 去除html字符串中指定选择器的节点，然后返回html字符串
+let removeHtmlNodeByClassEl = null
+export const removeHtmlNodeByClass = (html, selector) => {
+  if (!removeHtmlNodeByClassEl) {
+    removeHtmlNodeByClassEl = document.createElement('div')
+  }
+  removeHtmlNodeByClassEl.innerHTML = html
+  const node = removeHtmlNodeByClassEl.querySelector(selector)
+  if (node) {
+    node.parentNode.removeChild(node)
+  }
+  return removeHtmlNodeByClassEl.innerHTML
+}
+
 // 判断一个颜色是否是白色
 export const isWhite = color => {
   color = String(color).replaceAll(/\s+/g, '')
@@ -565,7 +617,25 @@ export const getVisibleColorFromTheme = themeConfig => {
   }
 }
 
+// 去掉DOM节点中的公式标签
+export const removeFormulaTags = node => {
+  const walk = root => {
+    const childNodes = root.childNodes
+    childNodes.forEach(node => {
+      if (node.nodeType === 1) {
+        if (node.classList.contains('ql-formula')) {
+          node.parentNode.removeChild(node)
+        } else {
+          walk(node)
+        }
+      }
+    })
+  }
+  walk(node)
+}
+
 // 将<p><span></span><p>形式的节点富文本内容转换成\n换行的文本
+// 会过滤掉节点中的格式节点
 let nodeRichTextToTextWithWrapEl = null
 export const nodeRichTextToTextWithWrap = html => {
   if (!nodeRichTextToTextWithWrapEl) {
@@ -578,6 +648,7 @@ export const nodeRichTextToTextWithWrap = html => {
     const node = childNodes[i]
     if (node.nodeType === 1) {
       // 元素节点
+      removeFormulaTags(node)
       if (node.tagName.toLowerCase() === 'p') {
         res += node.textContent + '\n'
       } else {
@@ -621,9 +692,55 @@ export const textToNodeRichTextWithWrap = html => {
   }
   return list
     .map(item => {
-      return `<p><span>${item}</span></p>`
+      return `<p><span>${htmlEscape(item)}</span></p>`
     })
     .join('')
+}
+
+// 去除富文本内容的样式，包括样式标签，比如strong、em、s等
+// 但要保留数学公式内容
+let removeRichTextStyesEl = null
+export const removeRichTextStyes = html => {
+  if (!removeRichTextStyesEl) {
+    removeRichTextStyesEl = document.createElement('div')
+  }
+  removeRichTextStyesEl.innerHTML = html
+  // 首先用占位文本替换掉所有的公式
+  const formulaList = removeRichTextStyesEl.querySelectorAll('.ql-formula')
+  Array.from(formulaList).forEach(el => {
+    const placeholder = document.createTextNode('$smmformula$')
+    el.parentNode.replaceChild(placeholder, el)
+  })
+  // 然后遍历每行节点，去掉内部的所有标签，转为文本
+  const childNodes = removeRichTextStyesEl.childNodes
+  let list = []
+  for (let i = 0; i < childNodes.length; i++) {
+    const node = childNodes[i]
+    if (node.nodeType === 1) {
+      // 元素节点
+      list.push(node.textContent)
+    } else if (node.nodeType === 3) {
+      // 文本节点
+      list.push(node.nodeValue)
+    }
+  }
+  // 拼接文本
+  html = list
+    .map(item => {
+      return `<p><span>${htmlEscape(item)}</span></p>`
+    })
+    .join('')
+  // 将公式添加回去
+  if (formulaList.length > 0) {
+    html = html.replace(/\$smmformula\$/g, '<span class="smmformula"></span>')
+    removeRichTextStyesEl.innerHTML = html
+    const els = removeRichTextStyesEl.querySelectorAll('.smmformula')
+    Array.from(els).forEach((el, index) => {
+      el.parentNode.replaceChild(formulaList[index], el)
+    })
+    html = removeRichTextStyesEl.innerHTML
+  }
+  return html
 }
 
 // 判断是否是移动端环境
@@ -636,7 +753,7 @@ export const isMobile = () => {
 // 获取对象改变了的的属性
 export const getObjectChangedProps = (oldObject, newObject) => {
   const res = {}
-  Object.keys(newObject).forEach((prop) => {
+  Object.keys(newObject).forEach(prop => {
     const oldVal = oldObject[prop]
     const newVal = newObject[prop]
     if (getType(oldVal) !== getType(newVal)) {
@@ -656,4 +773,810 @@ export const getObjectChangedProps = (oldObject, newObject) => {
     }
   })
   return res
+}
+
+// 判断一个字段是否是节点数据中的样式字段
+export const checkIsNodeStyleDataKey = key => {
+  // 用户自定义字段
+  if (/^_/.test(key)) return false
+  // 不在节点非样式字段列表里，那么就是样式字段
+  if (!nodeDataNoStylePropList.includes(key)) {
+    return true
+  }
+  return false
+}
+
+// 合并图标数组
+// const data = [
+//   { type: 'priority', name: '优先级图标', list: [{ name: '1', icon: 'a' }, { name: 2, icon: 'b' }] },
+//   { type: 'priority', name: '优先级图标', list: [{ name: '2', icon: 'c' }, { name: 3, icon: 'd' }] },
+// ];
+
+// mergerIconList(data) 结果
+
+// [
+//   { type: 'priority', name: '优先级图标', list: [{ name: '1', icon: 'a' }, { name: 2, icon: 'c' }, { name: 3, icon: 'd' }] },
+// ]
+export const mergerIconList = list => {
+  return list.reduce((result, item) => {
+    const existingItem = result.find(x => x.type === item.type)
+    if (existingItem) {
+      item.list.forEach(newObj => {
+        const existingObj = existingItem.list.find(x => x.name === newObj.name)
+        if (existingObj) {
+          existingObj.icon = newObj.icon
+        } else {
+          existingItem.list.push(newObj)
+        }
+      })
+    } else {
+      result.push({ ...item })
+    }
+    return result
+  }, [])
+}
+
+// 从节点实例列表里找出顶层的节点
+export const getTopAncestorsFomNodeList = list => {
+  let res = []
+  list.forEach(node => {
+    if (
+      !list.find(item => {
+        return item.uid !== node.uid && item.isAncestor(node)
+      })
+    ) {
+      res.push(node)
+    }
+  })
+  return res
+}
+
+// 从给定的节点实例列表里判断是否存在上下级关系
+export const checkHasSupSubRelation = list => {
+  for (let i = 0; i < list.length; i++) {
+    const cur = list[i]
+    if (
+      list.find(item => {
+        return item.uid !== cur.uid && cur.isAncestor(item)
+      })
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+// 解析要添加概要的节点实例列表
+export const parseAddGeneralizationNodeList = list => {
+  const cache = {}
+  const uidToParent = {}
+  list.forEach(node => {
+    const parent = node.parent
+    if (parent) {
+      const pUid = parent.uid
+      uidToParent[pUid] = parent
+      const index = node.getIndexInBrothers()
+      const data = {
+        node,
+        index
+      }
+      if (cache[pUid]) {
+        if (
+          !cache[pUid].find(item => {
+            return item.index === data.index
+          })
+        ) {
+          cache[pUid].push(data)
+        }
+      } else {
+        cache[pUid] = [data]
+      }
+    }
+  })
+  const res = []
+  Object.keys(cache).forEach(uid => {
+    if (cache[uid].length > 1) {
+      const rangeList = cache[uid]
+        .map(item => {
+          return item.index
+        })
+        .sort((a, b) => {
+          return a - b
+        })
+      res.push({
+        node: uidToParent[uid],
+        range: [rangeList[0], rangeList[rangeList.length - 1]]
+      })
+    } else {
+      res.push({
+        node: cache[uid][0].node
+      })
+    }
+  })
+  return res
+}
+
+// 判断两个矩形是否重叠
+export const checkTwoRectIsOverlap = (
+  minx1,
+  maxx1,
+  miny1,
+  maxy1,
+  minx2,
+  maxx2,
+  miny2,
+  maxy2
+) => {
+  return maxx1 > minx2 && maxx2 > minx1 && maxy1 > miny2 && maxy2 > miny1
+}
+
+// 聚焦指定输入框
+export const focusInput = el => {
+  let selection = window.getSelection()
+  let range = document.createRange()
+  range.selectNodeContents(el)
+  range.collapse()
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
+// 聚焦全选指定输入框
+export const selectAllInput = el => {
+  let selection = window.getSelection()
+  let range = document.createRange()
+  range.selectNodeContents(el)
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
+// 给指定的节点列表树数据添加附加数据，会修改原数据
+export const addDataToAppointNodes = (appointNodes, data = {}) => {
+  const walk = list => {
+    list.forEach(node => {
+      node.data = {
+        ...node.data,
+        ...data
+      }
+      if (node.children && node.children.length > 0) {
+        walk(node.children)
+      }
+    })
+  }
+  walk(appointNodes)
+  return appointNodes
+}
+
+// 给指定的节点列表树数据添加uid，会修改原数据
+// createNewId默认为false，即如果节点不存在uid的话，会创建新的uid。如果传true，那么无论节点数据原来是否存在uid，都会创建新的uid
+export const createUidForAppointNodes = (appointNodes, createNewId = false) => {
+  const walk = list => {
+    list.forEach(node => {
+      if (!node.data) {
+        node.data = {}
+      }
+      if (createNewId || isUndef(node.data.uid)) {
+        node.data.uid = createUid()
+      }
+      if (node.children && node.children.length > 0) {
+        walk(node.children)
+      }
+    })
+  }
+  walk(appointNodes)
+  return appointNodes
+}
+
+// 传入一个数据，如果该数据是数组，那么返回该数组，否则返回一个以该数据为成员的数组
+export const formatDataToArray = data => {
+  if (!data) return []
+  return Array.isArray(data) ? data : [data]
+}
+
+//  获取节点在同级里的位置索引
+export const getNodeDataIndex = node => {
+  return node.parent
+    ? node.parent.nodeData.children.findIndex(item => {
+        return item.data.uid === node.uid
+      })
+    : 0
+}
+
+// 从一个节点列表里找出某个节点的索引
+export const getNodeIndexInNodeList = (node, nodeList) => {
+  return nodeList.findIndex(item => {
+    return item.uid === node.uid
+  })
+}
+
+// 根据内容生成颜色
+export const generateColorByContent = str => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  // 这里使用伪随机数的原因是因为
+  // 1. 如果字符串的内容差不多，根据hash生产的颜色就比较相近，不好区分，比如v1.1 v1.2，所以需要加入随机数来使得颜色能够区分开
+  // 2. 普通的随机数每次数值不一样，就会导致每次新增标签原来的标签颜色就会发生改变，所以加入了这个方法，使得内容不变随机数也不变
+  const rng = new MersenneTwister(hash)
+  const h = rng.genrand_int32() % 360
+  return 'hsla(' + h + ', 50%, 50%, 1)'
+}
+
+//  html转义
+export const htmlEscape = str => {
+  ;[
+    ['&', '&amp;'],
+    ['<', '&lt;'],
+    ['>', '&gt;']
+  ].forEach(item => {
+    str = str.replace(new RegExp(item[0], 'g'), item[1])
+  })
+  return str
+}
+
+// 判断两个对象是否相同，只处理对象或数组
+export const isSameObject = (a, b) => {
+  const type = getType(a)
+  // a、b类型不一致，那么肯定不相同
+  if (type !== getType(b)) return false
+  // 如果都是对象
+  if (type === 'Object') {
+    const keysa = Object.keys(a)
+    const keysb = Object.keys(b)
+    // 对象字段数量不一样，肯定不相同
+    if (keysa.length !== keysb.length) return false
+    // 字段数量一样，那么需要遍历字段进行判断
+    for (let i = 0; i < keysa.length; i++) {
+      const key = keysa[i]
+      // b没有a的一个字段，那么肯定不相同
+      if (!keysb.includes(key)) return false
+      // 字段名称一样，那么需要递归判断它们的值
+      const isSame = isSameObject(a[key], b[key])
+      if (!isSame) {
+        return false
+      }
+    }
+    return true
+  } else if (type === 'Array') {
+    // 如果都是数组
+    // 数组长度不一样，肯定不相同
+    if (a.length !== b.length) return false
+    // 长度一样，那么需要遍历进行判断
+    for (let i = 0; i < a.length; i++) {
+      const itema = a[i]
+      const itemb = b[i]
+      const typea = getType(itema)
+      const typeb = getType(itemb)
+      if (typea !== typeb) return false
+      const isSame = isSameObject(itema, itemb)
+      if (!isSame) {
+        return false
+      }
+    }
+    return true
+  } else {
+    // 其他类型，直接全等判断
+    return a === b
+  }
+}
+
+// 将数据设置到用户剪切板中
+export const setDataToClipboard = data => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(JSON.stringify(data))
+  }
+}
+
+// 从用户剪贴板中读取文字和图片
+export const getDataFromClipboard = async () => {
+  let text = null
+  let img = null
+  if (navigator.clipboard) {
+    text = await navigator.clipboard.readText()
+    const items = await navigator.clipboard.read()
+    if (items && items.length > 0) {
+      for (const clipboardItem of items) {
+        for (const type of clipboardItem.types) {
+          if (/^image\//.test(type)) {
+            img = await clipboardItem.getType(type)
+            break
+          }
+        }
+      }
+    }
+  }
+  return {
+    text,
+    img
+  }
+}
+
+// 从节点的父节点的nodeData.children列表中移除该节点的数据
+export const removeFromParentNodeData = node => {
+  if (!node || !node.parent) return
+  const index = getNodeDataIndex(node)
+  if (index === -1) return
+  node.parent.nodeData.children.splice(index, 1)
+}
+
+// 给html自闭合标签添加闭合状态
+export const handleSelfCloseTags = str => {
+  selfCloseTagList.forEach(tagName => {
+    str = str.replaceAll(
+      new RegExp(`<${tagName}([^>]*)>`, 'g'),
+      `<${tagName} $1 />`
+    )
+  })
+  return str
+}
+
+// 检查两个节点列表是否包含的节点是一样的
+export const checkNodeListIsEqual = (list1, list2) => {
+  if (list1.length !== list2.length) return false
+  for (let i = 0; i < list1.length; i++) {
+    if (
+      !list2.find(item => {
+        return item.uid === list1[i].uid
+      })
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+// 获取浏览器的chrome内核版本
+export const getChromeVersion = () => {
+  const match = navigator.userAgent.match(/\s+Chrome\/(.*)\s+/)
+  if (match && match[1]) {
+    return Number.parseFloat(match[1])
+  }
+  return ''
+}
+
+// 创建smm粘贴的粘贴数据
+export const createSmmFormatData = data => {
+  return {
+    simpleMindMap: true,
+    data
+  }
+}
+
+// 检查是否是smm粘贴格式的数据
+export const checkSmmFormatData = data => {
+  let smmData = null
+  // 如果是字符串，则尝试解析为对象
+  if (typeof data === 'string') {
+    try {
+      const parsedData = JSON.parse(data)
+      // 判断是否是对象，且存在属性标志
+      if (typeof parsedData === 'object' && parsedData.simpleMindMap) {
+        smmData = parsedData.data
+      }
+    } catch (error) {}
+  } else if (typeof data === 'object' && data.simpleMindMap) {
+    // 否则如果是对象，则检查属性标志
+    smmData = data.data
+  }
+  const isSmm = !!smmData
+  return {
+    isSmm,
+    data: isSmm ? smmData : String(data)
+  }
+}
+
+// 处理输入框的粘贴事件，会去除文本的html格式、换行
+export const handleInputPasteText = (e, text) => {
+  e.preventDefault()
+  const selection = window.getSelection()
+  if (!selection.rangeCount) return
+  selection.deleteFromDocument()
+  text = text || e.clipboardData.getData('text')
+  // 去除格式
+  text = getTextFromHtml(text)
+  // 去除换行
+  text = text.replaceAll(/\n/g, '')
+  const node = document.createTextNode(text)
+  selection.getRangeAt(0).insertNode(node)
+  selection.collapseToEnd()
+}
+
+// 将思维导图树结构转平级对象
+/*
+    {
+        data: {
+            uid: 'xxx'
+        },
+        children: [
+            {
+                data: {
+                    uid: 'xxx'
+                },
+                children: []
+            }
+        ]
+    }
+    转为：
+    {
+        uid: {
+            children: [uid1, uid2],
+            data: {}
+        }
+    }
+  */
+export const transformTreeDataToObject = data => {
+  const res = {}
+  const walk = (root, parent) => {
+    const uid = root.data.uid
+    if (parent) {
+      parent.children.push(uid)
+    }
+    res[uid] = {
+      isRoot: !parent,
+      data: {
+        ...root.data
+      },
+      children: []
+    }
+    if (root.children && root.children.length > 0) {
+      root.children.forEach(item => {
+        walk(item, res[uid])
+      })
+    }
+  }
+  walk(data, null)
+  return res
+}
+
+// 将平级对象转树结构
+// transformTreeDataToObject方法的反向操作
+// 找到父节点的uid
+const _findParentUid = (data, targetUid) => {
+  const uids = Object.keys(data)
+  let res = ''
+  uids.forEach(uid => {
+    const children = data[uid].children
+    const isParent =
+      children.findIndex(childUid => {
+        return childUid === targetUid
+      }) !== -1
+    if (isParent) {
+      res = uid
+    }
+  })
+  return res
+}
+export const transformObjectToTreeData = data => {
+  const uids = Object.keys(data)
+  if (uids.length <= 0) return null
+  const rootKey = uids.find(uid => {
+    return data[uid].isRoot
+  })
+  if (!rootKey || !data[rootKey]) return null
+  // 根节点
+  const res = {
+    data: simpleDeepClone(data[rootKey].data),
+    children: []
+  }
+  const map = {}
+  map[rootKey] = res
+  uids.forEach(uid => {
+    const parentUid = _findParentUid(data, uid)
+    const cur = data[uid]
+    const node = map[uid] || {
+      data: simpleDeepClone(cur.data),
+      children: []
+    }
+    if (!map[uid]) {
+      map[uid] = node
+    }
+    if (parentUid) {
+      const index = data[parentUid].children.findIndex(item => {
+        return item === uid
+      })
+      if (!map[parentUid]) {
+        map[parentUid] = {
+          data: simpleDeepClone(data[parentUid].data),
+          children: []
+        }
+      }
+      map[parentUid].children[index] = node
+    }
+  })
+  return res
+}
+
+// 计算两个点的直线距离
+export const getTwoPointDistance = (x1, y1, x2, y2) => {
+  return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2))
+}
+
+// 判断两个矩形的相对位置
+// 第一个矩形在第二个矩形的什么方向
+export const getRectRelativePosition = (rect1, rect2) => {
+  // 获取第一个矩形的中心点坐标
+  const rect1CenterX = rect1.x + rect1.width / 2
+  const rect1CenterY = rect1.y + rect1.height / 2
+
+  // 获取第二个矩形的中心点坐标
+  const rect2CenterX = rect2.x + rect2.width / 2
+  const rect2CenterY = rect2.y + rect2.height / 2
+
+  // 判断第一个矩形在第二个矩形的哪个方向
+  if (rect1CenterX < rect2CenterX && rect1CenterY < rect2CenterY) {
+    return 'left-top'
+  } else if (rect1CenterX > rect2CenterX && rect1CenterY < rect2CenterY) {
+    return 'right-top'
+  } else if (rect1CenterX > rect2CenterX && rect1CenterY > rect2CenterY) {
+    return 'right-bottom'
+  } else if (rect1CenterX < rect2CenterX && rect1CenterY > rect2CenterY) {
+    return 'left-bottom'
+  } else if (rect1CenterX < rect2CenterX && rect1CenterY === rect2CenterY) {
+    return 'left'
+  } else if (rect1CenterX > rect2CenterX && rect1CenterY === rect2CenterY) {
+    return 'right'
+  } else if (rect1CenterX === rect2CenterX && rect1CenterY < rect2CenterY) {
+    return 'top'
+  } else if (rect1CenterX === rect2CenterX && rect1CenterY > rect2CenterY) {
+    return 'bottom'
+  } else {
+    return 'overlap'
+  }
+}
+
+// 处理获取svg内容时添加额外内容
+export const handleGetSvgDataExtraContent = ({
+  addContentToHeader,
+  addContentToFooter
+}) => {
+  // 追加内容
+  const cssTextList = []
+  let header = null
+  let headerHeight = 0
+  let footer = null
+  let footerHeight = 0
+  const handle = (fn, callback) => {
+    if (typeof fn === 'function') {
+      const res = fn()
+      if (!res) return
+      const { el, cssText, height } = res
+      if (el instanceof HTMLElement) {
+        addXmlns(el)
+        const foreignObject = createForeignObjectNode({ el, height })
+        callback(foreignObject, height)
+      }
+      if (cssText) {
+        cssTextList.push(cssText)
+      }
+    }
+  }
+  handle(addContentToHeader, (foreignObject, height) => {
+    header = foreignObject
+    headerHeight = height
+  })
+  handle(addContentToFooter, (foreignObject, height) => {
+    footer = foreignObject
+    footerHeight = height
+  })
+  return {
+    cssTextList,
+    header,
+    headerHeight,
+    footer,
+    footerHeight
+  }
+}
+
+// 获取指定节点的包围框信息
+export const getNodeTreeBoundingRect = (
+  node,
+  x = 0,
+  y = 0,
+  paddingX = 0,
+  paddingY = 0,
+  excludeSelf = false,
+  excludeGeneralization = false
+) => {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  const walk = (root, isRoot) => {
+    if (!(isRoot && excludeSelf)) {
+      const { x, y, width, height } = root.group
+        .findOne('.smm-node-shape')
+        .rbox()
+      if (x < minX) {
+        minX = x
+      }
+      if (x + width > maxX) {
+        maxX = x + width
+      }
+      if (y < minY) {
+        minY = y
+      }
+      if (y + height > maxY) {
+        maxY = y + height
+      }
+    }
+    if (!excludeGeneralization && root._generalizationList.length > 0) {
+      root._generalizationList.forEach(item => {
+        walk(item.generalizationNode)
+      })
+    }
+    if (root.children) {
+      root.children.forEach(item => {
+        walk(item)
+      })
+    }
+  }
+  walk(node, true)
+
+  minX = minX - x + paddingX
+  minY = minY - y + paddingY
+  maxX = maxX - x + paddingX
+  maxY = maxY - y + paddingY
+
+  return {
+    left: minX,
+    top: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  }
+}
+
+// 获取多个节点总的包围框
+export const getNodeListBoundingRect = (
+  nodeList,
+  x = 0,
+  y = 0,
+  paddingX = 0,
+  paddingY = 0
+) => {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  nodeList.forEach(node => {
+    const { left, top, width, height } = getNodeTreeBoundingRect(
+      node,
+      x,
+      y,
+      paddingX,
+      paddingY,
+      false,
+      true
+    )
+    if (left < minX) {
+      minX = left
+    }
+    if (left + width > maxX) {
+      maxX = left + width
+    }
+    if (top < minY) {
+      minY = top
+    }
+    if (top + height > maxY) {
+      maxY = top + height
+    }
+  })
+  return {
+    left: minX,
+    top: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  }
+}
+
+// 全屏事件检测
+const getOnfullscreEnevt = () => {
+  if (document.documentElement.requestFullScreen) {
+    return 'fullscreenchange'
+  } else if (document.documentElement.webkitRequestFullScreen) {
+    return 'webkitfullscreenchange'
+  } else if (document.documentElement.mozRequestFullScreen) {
+    return 'mozfullscreenchange'
+  } else if (document.documentElement.msRequestFullscreen) {
+    return 'msfullscreenchange'
+  }
+}
+export const fullscrrenEvent = getOnfullscreEnevt()
+
+// 全屏
+export const fullScreen = element => {
+  if (element.requestFullScreen) {
+    element.requestFullScreen()
+  } else if (element.webkitRequestFullScreen) {
+    element.webkitRequestFullScreen()
+  } else if (element.mozRequestFullScreen) {
+    element.mozRequestFullScreen()
+  }
+}
+
+// 退出全屏
+export const exitFullScreen = () => {
+  if (document.exitFullscreen) {
+    document.exitFullscreen()
+  } else if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen()
+  } else if (document.mozCancelFullScreen) {
+    document.mozCancelFullScreen()
+  }
+}
+
+// 创建foreignObject节点
+export const createForeignObjectNode = ({ el, width, height }) => {
+  const foreignObject = new ForeignObject()
+  if (width !== undefined) {
+    foreignObject.width(width)
+  }
+  if (height !== undefined) {
+    foreignObject.height(height)
+  }
+  foreignObject.add(el)
+  return foreignObject
+}
+
+// 格式化获取节点的概要数据
+export const formatGetNodeGeneralization = data => {
+  const generalization = data.generalization
+  if (generalization) {
+    return Array.isArray(generalization) ? generalization : [generalization]
+  } else {
+    return []
+  }
+}
+
+/**
+ * 防御 XSS 攻击，过滤恶意 HTML 标签和属性
+ * @param {string} text 需要过滤的文本
+ * @returns {string} 过滤后的文本
+ */
+export const defenseXSS = text => {
+  text = String(text)
+
+  // 初始化结果变量
+  let result = text
+
+  // 使用正则表达式匹配 HTML 标签
+  const match = text.match(/<(\S*?)[^>]*>.*?|<.*? \/>/g)
+  if (match == null) {
+    // 如果没有匹配到任何标签，则直接返回原始文本
+    return text
+  }
+
+  // 遍历匹配到的标签
+  for (let value of match) {
+    // 定义白名单属性正则表达式（style、target、href）
+    const whiteAttrRegex = new RegExp(/(style|target|href)=["'][^"']*["']/g)
+
+    // 定义黑名单href正则表达式（javascript:）
+    const aHrefBlackRegex = new RegExp(/href=["']javascript:/g)
+
+    // 过滤 HTML 标签
+    const filterHtml = value.replace(
+      // 匹配属性键值对（如：key="value"）
+      /([a-zA-Z-]+)\s*=\s*["']([^"']*)["']/g,
+      text => {
+        // 如果属性值包含黑名单href或不在白名单中，则删除该属性
+        if (aHrefBlackRegex.test(text) || !whiteAttrRegex.test(text)) {
+          return ''
+        }
+
+        // 否则，保留该属性
+        return text
+      }
+    )
+
+    // 将过滤后的标签替换回原始文本
+    result = result.replace(value, filterHtml)
+  }
+
+  // 返回最终结果
+  return result
+}
+
+// 给节点添加命名空间
+export const addXmlns = el => {
+  el.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
 }

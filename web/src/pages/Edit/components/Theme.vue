@@ -58,7 +58,10 @@ export default {
     }
   },
   computed: {
-    ...mapState(['activeSidebar', 'isDark']),
+    ...mapState({
+      isDark: state => state.localConfig.isDark,
+      activeSidebar: state => state.activeSidebar
+    }),
 
     currentList() {
       return this.groupList.find(item => {
@@ -70,7 +73,6 @@ export default {
     activeSidebar(val) {
       if (val === 'theme') {
         this.theme = this.mindMap.getTheme()
-        this.handleDark()
         this.$refs.sidebar.show = true
       } else {
         this.$refs.sidebar.show = false
@@ -80,14 +82,13 @@ export default {
   created() {
     this.initGroup()
     this.theme = this.mindMap.getTheme()
-    this.handleDark()
     this.mindMap.on('view_theme_change', this.handleViewThemeChange)
   },
   beforeDestroy() {
     this.mindMap.off('view_theme_change', this.handleViewThemeChange)
   },
   methods: {
-    ...mapMutations(['setIsDark']),
+    ...mapMutations(['setLocalConfig']),
 
     handleViewThemeChange() {
       this.theme = this.mindMap.getTheme()
@@ -122,17 +123,17 @@ export default {
       })
       this.groupList = [
         {
-          name: '经典',
+          name: this.$t('theme.classics'),
           list: classicsList
         },
         {
-          name: '深色',
+          name: this.$t('theme.dark'),
           list: this.themeList.filter(item => {
             return item.dark
           })
         },
         {
-          name: '朴素',
+          name: this.$t('theme.simple'),
           list: baiduList
         }
       ]
@@ -146,18 +147,20 @@ export default {
       const customThemeConfig = this.mindMap.getCustomThemeConfig()
       const hasCustomThemeConfig = Object.keys(customThemeConfig).length > 0
       if (hasCustomThemeConfig) {
-        this.$confirm('你当前自定义过基础样式，是否覆盖？', '提示', {
-          confirmButtonText: '覆盖',
-          cancelButtonText: '保留',
-          type: 'warning'
+        this.$confirm(this.$t('theme.coverTip'), this.$t('theme.tip'), {
+          confirmButtonText: this.$t('theme.cover'),
+          cancelButtonText: this.$t('theme.reserve'),
+          type: 'warning',
+          distinguishCancelAndClose: true,
+          callback: action => {
+            if (action === 'confirm') {
+              this.mindMap.setThemeConfig({}, true)
+              this.changeTheme(theme, {})
+            } else if (action === 'cancel') {
+              this.changeTheme(theme, customThemeConfig)
+            }
+          }
         })
-          .then(() => {
-            this.mindMap.setThemeConfig({})
-            this.changeTheme(theme, {})
-          })
-          .catch(() => {
-            this.changeTheme(theme, customThemeConfig)
-          })
       } else {
         this.changeTheme(theme, customThemeConfig)
       }
@@ -178,7 +181,9 @@ export default {
       let target = this.themeList.find(item => {
         return item.value === this.theme
       })
-      this.setIsDark(target.dark)
+      this.setLocalConfig({
+        isDark: target.dark
+      })
     }
   }
 }
