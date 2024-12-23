@@ -25,8 +25,40 @@ export default {
     belowLevel2Node: '三级及以下节点',
     nodeBorderType: '节点边框风格',
     nodeUseLineStyle: '是否使用只有底边框的风格',
-    otherConfig: '其他配置',
+    associativeLine: '关联线',
+    associativeLineWidth: '粗细',
+    associativeLineColor: '颜色',
+    associativeLineActiveWidth: '激活粗细',
+    associativeLineActiveColor: '激活颜色',
+    rootStyle: '根节点',
+    associativeLineText: '关联线文字',
+    fontFamily: '字体',
+    fontSize: '字号',
+    rootLineStartPos: '根节点连线起始位置',
+    center: '中心',
+    edge: '边缘',
+    rainbowLines: '彩虹线条',
+    notUseRainbowLines: '不使用彩虹线条',
+    outerFramePadding: '外框内边距'
+  },
+  setting: {
+    title: '设置',
+    openPerformance: '开启性能模式(Beta)',
     enableFreeDrag: '是否开启节点自由拖拽',
+    isEnableNodeRichText: '是否开启节点富文本编辑',
+    mousewheelAction: '鼠标滚轮行为',
+    zoomView: '缩放视图',
+    moveViewUpDown: '上下移动视图',
+    mousewheelZoomActionReverse: '鼠标滚轮缩放',
+    mousewheelZoomActionReverse1: '向前缩小向后放大',
+    mousewheelZoomActionReverse2: '向前放大向后缩小',
+    createNewNodeBehavior: '创建新节点的行为',
+    default: '激活新节点及进入编辑',
+    notActive: '不激活新节点',
+    activeOnly: '只激活新节点，不进入编辑',
+    openRealtimeRenderOnNodeTextEdit: '开启文本编辑实时渲染效果',
+    isShowScrollbar: '是否显示滚动条',
+    isUseHandDrawnLikeStyle: '是否开启手绘风格',
     watermark: '水印',
     showWatermark: '是否显示水印',
     watermarkDefaultText: '水印文字',
@@ -39,33 +71,11 @@ export default {
     watermarkTextOpacity: '文字透明度',
     watermarkTextFontSize: '文字字号',
     belowNode: '显示在节点下方',
-    isEnableNodeRichText: '是否开启节点富文本编辑',
-    mousewheelAction: '鼠标滚轮行为',
-    zoomView: '缩放视图',
-    moveViewUpDown: '上下移动视图',
-    associativeLine: '关联线',
-    associativeLineWidth: '粗细',
-    associativeLineColor: '颜色',
-    associativeLineActiveWidth: '激活粗细',
-    associativeLineActiveColor: '激活颜色',
-    mousewheelZoomActionReverse: '鼠标滚轮缩放',
-    mousewheelZoomActionReverse1: '向前缩小向后放大',
-    mousewheelZoomActionReverse2: '向前放大向后缩小',
-    createNewNodeBehavior: '创建新节点的行为',
-    default: '激活新节点及进入编辑',
-    notActive: '不激活新节点',
-    activeOnly: '只激活新节点，不进入编辑',
-    rootStyle: '根节点',
-    associativeLineText: '关联线文字',
-    fontFamily: '字体',
-    fontSize: '字号',
-    isShowScrollbar: '是否显示滚动条',
-    isUseHandDrawnLikeStyle: '是否开启手绘风格',
-    rootLineStartPos: '根节点连线起始位置',
-    center: '中心',
-    edge: '边缘',
-    rainbowLines: '彩虹线条',
-    notUseRainbowLines: '不使用彩虹线条'
+    tagPosition: '节点标签显示的位置',
+    tagPositionRight: '文本右侧',
+    tagPositionBottom: '文本下面',
+    alwaysShowExpandBtn: '是否一直显示展开收起按钮',
+    enableAutoEnterTextEditWhenKeydown: '键盘输入时自动进入文本编辑'
   },
   color: {
     moreColor: '更多颜色'
@@ -108,7 +118,12 @@ export default {
     copyToTxt: 'Txt',
     copyToPng: '图片',
     copySuccess: '复制成功',
-    copyFail: '复制失败'
+    copyFail: '复制失败',
+    number: '编号其子节点',
+    expandNodeChild: '展开所有下级节点',
+    unExpandNodeChild: '收起所有下级节点',
+    addToDo: '添加待办',
+    removeToDo: '删除待办'
   },
   count: {
     words: '字数',
@@ -152,8 +167,9 @@ export default {
   import: {
     title: '导入',
     selectFile: '选取文件',
-    supportFile: '支持.smm、.json、.xmind、.xlsx、.md文件',
-    enableFileTip: '请选择.smm、.json、.xmind、.xlsx、.md文件',
+    support: '支持',
+    file: '文件',
+    pleaseSelect: '请选择',
     maxFileNum: '最多只能选择一个文件',
     notSelectTip: '请选择要导入的文件',
     fileContentError: '文件内容有误',
@@ -209,7 +225,6 @@ export default {
     text: '文字',
     fontFamily: '字体',
     fontSize: '字号',
-    lineHeight: '行高',
     color: '颜色',
     addFontWeight: '加粗',
     italic: '斜体',
@@ -233,7 +248,13 @@ export default {
     endColor: '结束',
     arrowDir: '箭头位置',
     arrowDirStart: '头部',
-    arrowDirEnd: '尾部'
+    arrowDirEnd: '尾部',
+    direction: '方向',
+    selectNodeTip: '请选择一个节点',
+    openLineFlow: '开启流动效果',
+    lineFlowDuration: '一个流动周期的时间',
+    forward: '正向',
+    reverse: '反向'
   },
   theme: {
     title: '主题',
@@ -283,8 +304,8 @@ export default {
     defaultFileName: '思维导图',
     creatingTip: '正在创建文件',
     directory: '目录',
-    newFileTip: '新建文件前请先导出当前编辑的文件，否则内容会丢失',
-    openFileTip: '打开文件前请先导出当前编辑的文件，否则内容会丢'
+    newFileTip: '新建文件前请先导出当前编辑的文件，谨防内容丢失',
+    openFileTip: '打开文件前请先导出当前编辑的文件，谨防内容丢失'
   },
   edit: {
     newFeatureNoticeTitle: '新特性提醒',
@@ -296,7 +317,8 @@ export default {
     yes: '是',
     no: '否',
     exportError: '导出失败',
-    dragTip: '在此释放以导入该文件'
+    dragTip: '在此释放以导入该文件',
+    deleteNodeImgTip: '是否确认删除该节点图片？'
   },
   mouseAction: {
     tip1: '当前：左键拖动画布，右键框选节点',
@@ -307,7 +329,8 @@ export default {
     replacePlaceholder: '请输入替换内容',
     replace: '替换',
     replaceAll: '全部替换',
-    cancel: '取消'
+    cancel: '取消',
+    noResult: '暂无结果'
   },
   nodeIconSidebar: {
     title: '图标/贴纸',
@@ -365,5 +388,9 @@ export default {
     boxStyle: '边框样式',
     boxColor: '边框颜色',
     fillColor: '填充颜色'
+  },
+  nodeTagStyle: {
+    placeholder: '请输入标签内容',
+    delete: '删除此标签'
   }
 }

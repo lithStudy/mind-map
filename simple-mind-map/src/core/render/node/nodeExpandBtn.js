@@ -1,5 +1,6 @@
 import btnsSvg from '../../../svg/btns'
-import { SVG, Circle, G } from '@svgdotjs/svg.js'
+import { SVG, Circle, G, Text } from '@svgdotjs/svg.js'
+import { isUndef } from '../../../utils'
 
 // 创建展开收起按钮的内容节点
 function createExpandNodeContent() {
@@ -10,9 +11,7 @@ function createExpandNodeContent() {
   // 根据配置判断是否显示数量按钮
   if (this.mindMap.opt.isShowExpandNum) {
     // 展开的节点
-    this._openExpandNode = SVG()
-      .text()
-      .size(this.expandBtnSize, this.expandBtnSize)
+    this._openExpandNode = new Text()
     // 文本垂直居中
     this._openExpandNode.attr({
       'text-anchor': 'middle',
@@ -80,8 +79,13 @@ function updateExpandBtnNode() {
         })
         // 计算子节点数量
         let count = this.sumNode(this.nodeData.children)
-        count = expandBtnNumHandler(count)
-        node.text(count)
+        if (typeof expandBtnNumHandler === 'function') {
+          const res = expandBtnNumHandler(count, this)
+          if (!isUndef(res)) {
+            count = res
+          }
+        }
+        node.text(String(count))
       } else {
         this._fillExpandNode.stroke('none')
       }
@@ -126,11 +130,7 @@ function renderExpandBtn() {
     this._expandBtn.on('click', e => {
       e.stopPropagation()
       // 展开收缩
-      this.mindMap.execCommand(
-        'SET_NODE_EXPAND',
-        this,
-        !this.getData('expand')
-      )
+      this.mindMap.execCommand('SET_NODE_EXPAND', this, !this.getData('expand'))
       this.mindMap.emit('expand_btn_click', this)
     })
     this._expandBtn.on('dblclick', e => {
@@ -154,7 +154,8 @@ function removeExpandBtn() {
 
 // 显示展开收起按钮
 function showExpandBtn() {
-  if (this.mindMap.opt.alwaysShowExpandBtn) return
+  const { alwaysShowExpandBtn, notShowExpandBtn } = this.mindMap.opt
+  if (alwaysShowExpandBtn || notShowExpandBtn) return
   setTimeout(() => {
     this.renderExpandBtn()
   }, 0)
@@ -162,7 +163,8 @@ function showExpandBtn() {
 
 // 隐藏展开收起按钮
 function hideExpandBtn() {
-  if (this.mindMap.opt.alwaysShowExpandBtn || this._isMouseenter) return
+  const { alwaysShowExpandBtn, notShowExpandBtn } = this.mindMap.opt
+  if (alwaysShowExpandBtn || this._isMouseenter || notShowExpandBtn) return
   // 非激活状态且展开状态鼠标移出才隐藏按钮
   let { isActive, expand } = this.getData()
   if (!isActive && expand) {

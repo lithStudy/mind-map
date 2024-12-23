@@ -5,6 +5,8 @@ import {
 } from '../constants/constant'
 import MersenneTwister from './mersenneTwister'
 import { ForeignObject } from '@svgdotjs/svg.js'
+import merge from 'deepmerge'
+import { lineStyleProps } from '../theme/default'
 
 //  深度优先遍历树
 export const walk = (
@@ -14,11 +16,12 @@ export const walk = (
   afterCallback,
   isRoot,
   layerIndex = 0,
-  index = 0
+  index = 0,
+  ancestors = []
 ) => {
   let stop = false
   if (beforeCallback) {
-    stop = beforeCallback(root, parent, isRoot, layerIndex, index)
+    stop = beforeCallback(root, parent, isRoot, layerIndex, index, ancestors)
   }
   if (!stop && root.children && root.children.length > 0) {
     let _layerIndex = layerIndex + 1
@@ -30,11 +33,13 @@ export const walk = (
         afterCallback,
         false,
         _layerIndex,
-        nodeIndex
+        nodeIndex,
+        [...ancestors, root]
       )
     })
   }
-  afterCallback && afterCallback(root, parent, isRoot, layerIndex, index)
+  afterCallback &&
+    afterCallback(root, parent, isRoot, layerIndex, index, ancestors)
 }
 
 //  广度优先遍历树
@@ -72,11 +77,11 @@ export const resizeImgSizeByOriginRatio = (
   let nRatio = width / height
   let mRatio = newWidth / newHeight
   if (nRatio > mRatio) {
-    // 固定高度
-    arr = [nRatio * newHeight, newHeight]
-  } else {
     // 固定宽度
     arr = [newWidth, newWidth / nRatio]
+  } else {
+    // 固定高度
+    arr = [nRatio * newHeight, newHeight]
   }
   return arr
 }
@@ -91,11 +96,11 @@ export const resizeImgSize = (width, height, maxWidth, maxHeight) => {
     } else {
       let mRatio = maxWidth / maxHeight
       if (nRatio > mRatio) {
-        // 固定高度
-        arr = [nRatio * maxHeight, maxHeight]
-      } else {
         // 固定宽度
         arr = [maxWidth, maxWidth / nRatio]
+      } else {
+        // 固定高度
+        arr = [nRatio * maxHeight, maxHeight]
       }
     }
   } else if (maxWidth) {
@@ -503,13 +508,14 @@ export const addHtmlStyle = (html, tag, style) => {
   if (!addHtmlStyleEl) {
     addHtmlStyleEl = document.createElement('div')
   }
+  const tags = Array.isArray(tag) ? tag : [tag]
   addHtmlStyleEl.innerHTML = html
   let walk = root => {
     let childNodes = root.childNodes
     childNodes.forEach(node => {
       if (node.nodeType === 1) {
         // 元素节点
-        if (node.tagName.toLowerCase() === tag) {
+        if (tags.includes(node.tagName.toLowerCase())) {
           node.style.cssText = style
         } else {
           walk(node)
@@ -786,6 +792,18 @@ export const checkIsNodeStyleDataKey = key => {
   return false
 }
 
+// 判断一个对象是否不需要触发节点重新创建
+export const isNodeNotNeedRenderData = config => {
+  const list = [...lineStyleProps] // 节点连线样式
+  const keys = Object.keys(config)
+  for (let i = 0; i < keys.length; i++) {
+    if (!list.includes(keys[i])) {
+      return false
+    }
+  }
+  return true
+}
+
 // 合并图标数组
 // const data = [
 //   { type: 'priority', name: '优先级图标', list: [{ name: '1', icon: 'a' }, { name: 2, icon: 'b' }] },
@@ -948,7 +966,11 @@ export const addDataToAppointNodes = (appointNodes, data = {}) => {
 
 // 给指定的节点列表树数据添加uid，会修改原数据
 // createNewId默认为false，即如果节点不存在uid的话，会创建新的uid。如果传true，那么无论节点数据原来是否存在uid，都会创建新的uid
-export const createUidForAppointNodes = (appointNodes, createNewId = false) => {
+export const createUidForAppointNodes = (
+  appointNodes,
+  createNewId = false,
+  handle = null
+) => {
   const walk = list => {
     list.forEach(node => {
       if (!node.data) {
@@ -957,6 +979,7 @@ export const createUidForAppointNodes = (appointNodes, createNewId = false) => {
       if (createNewId || isUndef(node.data.uid)) {
         node.data.uid = createUid()
       }
+      handle && handle(node)
       if (node.children && node.children.length > 0) {
         walk(node.children)
       }
@@ -1060,9 +1083,14 @@ export const isSameObject = (a, b) => {
   }
 }
 
+// 检查navigator.clipboard对象的读取是否可用
+export const checkClipboardReadEnable = () => {
+  return navigator.clipboard && typeof navigator.clipboard.read === 'function'
+}
+
 // 将数据设置到用户剪切板中
 export const setDataToClipboard = data => {
-  if (navigator.clipboard) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(JSON.stringify(data))
   }
 }
@@ -1071,15 +1099,16 @@ export const setDataToClipboard = data => {
 export const getDataFromClipboard = async () => {
   let text = null
   let img = null
-  if (navigator.clipboard) {
-    text = await navigator.clipboard.readText()
+  if (checkClipboardReadEnable()) {
     const items = await navigator.clipboard.read()
     if (items && items.length > 0) {
       for (const clipboardItem of items) {
         for (const type of clipboardItem.types) {
           if (/^image\//.test(type)) {
             img = await clipboardItem.getType(type)
-            break
+          } else if (type === 'text/plain') {
+            const blob = await clipboardItem.getType(type)
+            text = await blob.text()
           }
         }
       }
@@ -1175,9 +1204,18 @@ export const handleInputPasteText = (e, text) => {
   // 去除格式
   text = getTextFromHtml(text)
   // 去除换行
-  text = text.replaceAll(/\n/g, '')
-  const node = document.createTextNode(text)
-  selection.getRangeAt(0).insertNode(node)
+  // text = text.replaceAll(/\n/g, '')
+  const textArr = text.split(/\n/g)
+  const fragment = document.createDocumentFragment()
+  textArr.forEach((item, index) => {
+    const node = document.createTextNode(item)
+    fragment.appendChild(node)
+    if (index < textArr.length - 1) {
+      const br = document.createElement('br')
+      fragment.appendChild(br)
+    }
+  })
+  selection.getRangeAt(0).insertNode(fragment)
   selection.collapseToEnd()
 }
 
@@ -1382,22 +1420,24 @@ export const getNodeTreeBoundingRect = (
   let minY = Infinity
   let maxY = -Infinity
   const walk = (root, isRoot) => {
-    if (!(isRoot && excludeSelf)) {
-      const { x, y, width, height } = root.group
-        .findOne('.smm-node-shape')
-        .rbox()
-      if (x < minX) {
-        minX = x
-      }
-      if (x + width > maxX) {
-        maxX = x + width
-      }
-      if (y < minY) {
-        minY = y
-      }
-      if (y + height > maxY) {
-        maxY = y + height
-      }
+    if (!(isRoot && excludeSelf) && root.group) {
+      try {
+        const { x, y, width, height } = root.group
+          .findOne('.smm-node-shape')
+          .rbox()
+        if (x < minX) {
+          minX = x
+        }
+        if (x + width > maxX) {
+          maxX = x + width
+        }
+        if (y < minY) {
+          minY = y
+        }
+        if (y + height > maxY) {
+          maxY = y + height
+        }
+      } catch (e) {}
     }
     if (!excludeGeneralization && root._generalizationList.length > 0) {
       root._generalizationList.forEach(item => {
@@ -1495,6 +1535,7 @@ export const fullScreen = element => {
 
 // 退出全屏
 export const exitFullScreen = () => {
+  if (!document.fullscreenElement) return
   if (document.exitFullscreen) {
     document.exitFullscreen()
   } else if (document.webkitExitFullscreen) {
@@ -1579,4 +1620,22 @@ export const defenseXSS = text => {
 // 给节点添加命名空间
 export const addXmlns = el => {
   el.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+}
+
+// 给一组节点实例升序排序，依据其sortIndex值
+export const sortNodeList = nodeList => {
+  nodeList = [...nodeList]
+  nodeList.sort((a, b) => {
+    return a.sortIndex - b.sortIndex
+  })
+  return nodeList
+}
+
+// 合并主题配置
+export const mergeTheme = (dest, source) => {
+  return merge(dest, source, {
+    arrayMerge: (destinationArray, sourceArray) => {
+      return sourceArray
+    }
+  })
 }

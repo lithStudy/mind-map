@@ -17,7 +17,11 @@
     <OutlineSidebar :mindMap="mindMap"></OutlineSidebar>
     <Style v-if="!isZenMode"></Style>
     <BaseStyle :data="mindMapData" :mindMap="mindMap"></BaseStyle>
-    <Theme v-if="mindMap" :mindMap="mindMap"></Theme>
+    <AssociativeLineStyle
+      v-if="mindMap"
+      :mindMap="mindMap"
+    ></AssociativeLineStyle>
+    <Theme v-if="mindMap" :data="mindMapData" :mindMap="mindMap"></Theme>
     <Structure :mindMap="mindMap"></Structure>
     <ShortcutKey></ShortcutKey>
     <Contextmenu v-if="mindMap" :mindMap="mindMap"></Contextmenu>
@@ -37,6 +41,8 @@
     <FormulaSidebar v-if="mindMap" :mindMap="mindMap"></FormulaSidebar>
     <SourceCodeEdit v-if="mindMap" :mindMap="mindMap"></SourceCodeEdit>
     <NodeOuterFrame v-if="mindMap" :mindMap="mindMap"></NodeOuterFrame>
+    <NodeTagStyle v-if="mindMap" :mindMap="mindMap"></NodeTagStyle>
+    <Setting :data="mindMapData" :mindMap="mindMap"></Setting>
     <div
       class="dragMask"
       v-if="showDragMask"
@@ -70,12 +76,19 @@ import Formula from 'simple-mind-map/src/plugins/Formula.js'
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js'
 import Demonstrate from 'simple-mind-map/src/plugins/Demonstrate.js'
 import OuterFrame from 'simple-mind-map/src/plugins/OuterFrame.js'
+import MindMapLayoutPro from 'simple-mind-map/src/plugins/MindMapLayoutPro.js'
+import Themes from 'simple-mind-map-plugin-themes'
 // 协同编辑插件
 // import Cooperate from 'simple-mind-map/src/plugins/Cooperate.js'
-// 手绘风格插件，该插件为付费插件，详情请查看开发文档
+// 以下插件为付费插件，详情请查看开发文档。依次为：手绘风格插件、标记插件、编号插件、Freemind软件格式导入导出插件、Excel软件格式导入导出插件、待办插件、节点连线流动效果插件
 // import HandDrawnLikeStyle from 'simple-mind-map-plugin-handdrawnlikestyle'
-// 标记插件，该插件为付费插件，详情请查看开发文档
 // import Notation from 'simple-mind-map-plugin-notation'
+// import Numbers from 'simple-mind-map-plugin-numbers'
+// import Freemind from 'simple-mind-map-plugin-freemind'
+// import Excel from 'simple-mind-map-plugin-excel'
+// import Checkbox from 'simple-mind-map-plugin-checkbox'
+// import LineFlow from 'simple-mind-map-plugin-lineflow'
+// npm link simple-mind-map-plugin-excel simple-mind-map-plugin-freemind simple-mind-map-plugin-numbers simple-mind-map-plugin-notation simple-mind-map-plugin-handdrawnlikestyle simple-mind-map-plugin-checkbox simple-mind-map simple-mind-map-plugin-themes simple-mind-map-plugin-lineflow
 import OutlineSidebar from './OutlineSidebar'
 import Style from './Style'
 import BaseStyle from './BaseStyle'
@@ -93,7 +106,6 @@ import NodeImgPreview from './NodeImgPreview.vue'
 import SidebarTrigger from './SidebarTrigger.vue'
 import { mapState } from 'vuex'
 import icon from '@/config/icon'
-import customThemeList from '@/customThemes'
 import CustomNodeContent from './CustomNodeContent.vue'
 import Color from './Color.vue'
 import Vue from 'vue'
@@ -112,6 +124,9 @@ import FormulaSidebar from './FormulaSidebar.vue'
 import SourceCodeEdit from './SourceCodeEdit.vue'
 import NodeAttachment from './NodeAttachment.vue'
 import NodeOuterFrame from './NodeOuterFrame.vue'
+import NodeTagStyle from './NodeTagStyle.vue'
+import Setting from './Setting.vue'
+import AssociativeLineStyle from './AssociativeLineStyle.vue'
 
 // 注册插件
 MindMap.usePlugin(MiniMap)
@@ -131,18 +146,12 @@ MindMap.usePlugin(MiniMap)
   .usePlugin(RainbowLines)
   .usePlugin(Demonstrate)
   .usePlugin(OuterFrame)
+  .usePlugin(MindMapLayoutPro)
 // .usePlugin(Cooperate) // 协同插件
 
-// 注册自定义主题
-customThemeList.forEach(item => {
-  MindMap.defineTheme(item.value, item.theme)
-})
+// 注册主题
+Themes.init(MindMap)
 
-/**
- * @Author: 王林
- * @Date: 2021-06-24 22:56:17
- * @Desc: 编辑区域
- */
 export default {
   name: 'Edit',
   components: {
@@ -168,7 +177,10 @@ export default {
     FormulaSidebar,
     SourceCodeEdit,
     NodeAttachment,
-    NodeOuterFrame
+    NodeOuterFrame,
+    NodeTagStyle,
+    Setting,
+    AssociativeLineStyle
   },
   data() {
     return {
@@ -189,7 +201,8 @@ export default {
         state.localConfig.useLeftKeySelectionRightKeyDrag,
       isUseHandDrawnLikeStyle: state =>
         state.localConfig.isUseHandDrawnLikeStyle,
-      extraTextOnExport: state => state.extraTextOnExport
+      extraTextOnExport: state => state.extraTextOnExport,
+      isDragOutlineTreeNode: state => state.isDragOutlineTreeNode
     })
   },
   watch: {
@@ -281,21 +294,13 @@ export default {
       }
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-03 22:11:37
-     * @Desc: 获取思维导图数据，实际应该调接口获取
-     */
+    // 获取思维导图数据，实际应该调接口获取
     getData() {
       let storeData = getData()
       this.mindMapData = storeData
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-08-01 10:19:07
-     * @Desc: 存储数据当数据有变时
-     */
+    // 存储数据当数据有变时
     bindSaveEvent() {
       this.$bus.$on('data_change', data => {
         storeData(data)
@@ -310,21 +315,13 @@ export default {
       })
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-08-02 23:19:52
-     * @Desc: 手动保存
-     */
+    // 手动保存
     manualSave() {
       let data = this.mindMap.getData(true)
       storeConfig(data)
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-04-10 15:01:01
-     * @Desc: 初始化
-     */
+    // 初始化
     init() {
       let hasFileURL = this.hasFileURL()
       let { root, layout, theme, view, config } = this.mindMapData
@@ -358,11 +355,12 @@ export default {
             // this.$bus.$emit('hideNoteContent')
           }
         },
+        openRealtimeRenderOnNodeTextEdit: true,
+        enableAutoEnterTextEditWhenKeydown: true,
         ...(config || {}),
         iconList: [...icon],
         useLeftKeySelectionRightKeyDrag: this.useLeftKeySelectionRightKeyDrag,
         customInnerElsAppendTo: null,
-        enableAutoEnterTextEditWhenKeydown: true,
         customHandleClipboardText: handleClipboardText,
         defaultNodeImage: require('../../../assets/img/图片加载失败.svg'),
         initRootNodePosition: ['center', 'center'],
@@ -409,6 +407,28 @@ export default {
             cssText,
             height: 30
           }
+        },
+        expandBtnNumHandler: num => {
+          return num >= 100 ? '…' : num
+        },
+        beforeDeleteNodeImg: node => {
+          return new Promise(resolve => {
+            this.$confirm(
+              this.$t('edit.deleteNodeImgTip'),
+              this.$t('edit.tip'),
+              {
+                confirmButtonText: this.$t('edit.yes'),
+                cancelButtonText: this.$t('edit.no'),
+                type: 'warning'
+              }
+            )
+              .then(() => {
+                resolve(false)
+              })
+              .catch(() => {
+                resolve(true)
+              })
+          })
         }
         // createNodePrefixContent: (node) => {
         //   const el = document.createElement('div')
@@ -531,6 +551,28 @@ export default {
         this.mindMap.addPlugin(Notation)
         this.$store.commit('setSupportMark', true)
       }
+      if (typeof Numbers !== 'undefined') {
+        this.mindMap.addPlugin(Numbers)
+        this.$store.commit('setSupportNumbers', true)
+      }
+      if (typeof Freemind !== 'undefined') {
+        this.mindMap.addPlugin(Freemind)
+        this.$store.commit('setSupportFreemind', true)
+        Vue.prototype.Freemind = Freemind
+      }
+      if (typeof Excel !== 'undefined') {
+        this.mindMap.addPlugin(Excel)
+        this.$store.commit('setSupportExcel', true)
+        Vue.prototype.Excel = Excel
+      }
+      if (typeof Checkbox !== 'undefined') {
+        this.mindMap.addPlugin(Checkbox)
+        this.$store.commit('setSupportCheckbox', true)
+      }
+      if (typeof LineFlow !== 'undefined') {
+        this.mindMap.addPlugin(LineFlow)
+        this.$store.commit('setSupportLineFlow', true)
+      }
       this.mindMap.keyCommand.addShortcut('Control+s', () => {
         this.manualSave()
       })
@@ -559,7 +601,8 @@ export default {
         'node_attachmentClick',
         'node_attachmentContextmenu',
         'demonstrate_jump',
-        'exit_demonstrate'
+        'exit_demonstrate',
+        'node_note_dblclick'
       ].forEach(event => {
         this.mindMap.on(event, (...args) => {
           this.$bus.$emit(event, ...args)
@@ -574,6 +617,12 @@ export default {
       // 解析url中的文件
       if (hasFileURL) {
         this.$bus.$emit('handle_file_url')
+      }
+      // api/index.js文件使用
+      // 当正在编辑本地文件时通过该方法获取最新数据
+      Vue.prototype.getCurrentData = () => {
+        const fullData = this.mindMap.getData(true)
+        return { ...fullData, config: this.mindMapData.config }
       }
       // 协同测试
       this.cooperateTest()
@@ -602,11 +651,7 @@ export default {
       return /\.(smm|json|xmind|md|xlsx)$/.test(fileURL)
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-08-03 23:01:13
-     * @Desc: 动态设置思维导图数据
-     */
+    // 动态设置思维导图数据
     setData(data) {
       this.handleShowLoading()
       if (data.root) {
@@ -618,29 +663,17 @@ export default {
       this.manualSave()
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-05-05 13:32:11
-     * @Desc: 重新渲染
-     */
+    // 重新渲染
     reRender() {
       this.mindMap.reRender()
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-05-04 13:08:28
-     * @Desc: 执行命令
-     */
+    // 执行命令
     execCommand(...args) {
       this.mindMap.execCommand(...args)
     },
 
-    /**
-     * @Author: 王林
-     * @Date: 2021-07-01 22:33:02
-     * @Desc: 导出
-     */
+    // 导出
     async export(...args) {
       try {
         showLoading()
@@ -845,6 +878,7 @@ export default {
 
     // 拖拽文件到页面导入
     onDragenter() {
+      if (this.isDragOutlineTreeNode) return
       this.showDragMask = true
     },
     onDragleave() {
@@ -854,6 +888,7 @@ export default {
       this.showDragMask = false
       const dt = e.dataTransfer
       const file = dt.files && dt.files[0]
+      if (!file) return
       this.$bus.$emit('importFile', file)
     }
   }

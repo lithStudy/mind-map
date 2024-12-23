@@ -34,7 +34,6 @@
 import Sidebar from './Sidebar'
 import { mapState, mapMutations } from 'vuex'
 import { formulaList } from '@/config/constant'
-import 'katex/dist/katex.min.css'
 
 export default {
   name: 'FormulaSidebar',
@@ -81,6 +80,7 @@ export default {
     ...mapMutations(['setActiveSidebar']),
 
     init() {
+      if (!window.katex) return
       this.list = formulaList.map(item => {
         return {
           overview: window.katex.renderToString(
